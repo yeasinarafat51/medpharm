@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   FaHome,
   FaCapsules,
@@ -7,7 +8,11 @@ import {
   FaClipboardList,
   FaArrowLeft,
   FaSignOutAlt,
+  FaBars,
+  FaTimes,
+  FaChartBar,
 } from "react-icons/fa";
+
 import Swal from "sweetalert2";
 import useAuth from "../../hooks/useAuth";
 
@@ -15,6 +20,8 @@ function Dashboard() {
   const { user, logoutUser } = useAuth();
 
   const navigate = useNavigate();
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -38,29 +45,62 @@ function Dashboard() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* Sidebar */}
+  const menuClass = ({ isActive }) =>
+    `flex items-center gap-3 px-6 py-4 transition-all duration-200 ${
+      isActive ? "bg-white text-blue-700 font-semibold" : "hover:bg-blue-800"
+    }`;
 
-      <aside className="w-72 bg-gradient-to-b from-blue-700 to-blue-900 text-white shadow-xl">
-        <div className="py-8 border-b border-blue-500 text-center">
+  return (
+    <div className="min-h-screen flex bg-gray-100">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed lg:static top-0 left-0 z-40
+          h-screen w-72
+          bg-gradient-to-b
+          from-blue-700
+          to-blue-900
+          text-white
+          shadow-xl
+          transform
+          transition-transform
+          duration-300
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+        `}
+      >
+        {/* Sidebar Header */}
+
+        <div className="border-b border-blue-500 py-8 text-center relative">
           <h1 className="text-3xl font-bold">💊 MedPharm</h1>
 
-          <p className="text-sm text-blue-200 mt-2">Pharmacy Management</p>
+          <p className="mt-2 text-blue-200">Pharmacy Management</p>
+
+          {/* Mobile Close */}
+
+          <button
+            className="absolute right-5 top-5 text-2xl lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <FaTimes />
+          </button>
         </div>
 
-        <nav className="mt-8 flex flex-col">
+        {/* Sidebar Menu */}
+
+        <nav className="mt-6 flex flex-col">
           <NavLink
             to="/dashboard"
             end
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
           >
             <FaHome />
             Dashboard
@@ -68,14 +108,8 @@ function Dashboard() {
 
           <NavLink
             to="/dashboard/add-medicine"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
           >
             <FaCapsules />
             Add Medicine
@@ -83,134 +117,105 @@ function Dashboard() {
 
           <NavLink
             to="/dashboard/all-medicine"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
           >
             <FaClipboardList />
             All Medicine
           </NavLink>
 
           <NavLink
-            to="/dashboard/all-item-medicine"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
-          >
-            <FaShoppingCart />
-            All Item Medicine
-          </NavLink>
-
-          <NavLink
             to="/dashboard/all-orders"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
           >
             <FaShoppingCart />
             All Orders
           </NavLink>
 
           <NavLink
-            to="/dashboard/my-orders"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
-          >
-            <FaClipboardList />
-            My Orders
-          </NavLink>
-
-          <NavLink
             to="/dashboard/users"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-4 transition-all
-              ${
-                isActive
-                  ? "bg-white text-blue-700 font-semibold"
-                  : "hover:bg-blue-800"
-              }`
-            }
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
           >
             <FaUsers />
             Users
           </NavLink>
+
           <NavLink
             to="/dashboard/sales-report"
-            className={({ isActive }) =>
-              `px-6 py-3 hover:bg-blue-800 ${isActive ? "bg-blue-900" : ""}`
-            }
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
           >
+            <FaChartBar />
             Sales Report
           </NavLink>
+
           <NavLink
             to="/"
-            className="flex items-center gap-3 px-6 py-4 hover:bg-red-600 mt-6"
+            className="mt-6 flex items-center gap-3 px-6 py-4 hover:bg-red-600 transition"
+            onClick={() => setSidebarOpen(false)}
           >
             <FaArrowLeft />
             Back Home
           </NavLink>
         </nav>
-      </aside>
-
-      {/* Main */}
-
-      <div className="flex-1 flex flex-col">
+      </aside>{" "}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navbar */}
 
-        <header className="bg-white shadow-md px-8 py-5 flex justify-between items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-blue-700">Dashboard</h2>
-
-            <p className="text-gray-500">
-              Welcome back,
-              <span className="font-semibold text-blue-700">
-                {" "}
-                {user?.displayName || "Admin"}
-              </span>
-            </p>
-          </div>
+        <header className="bg-white shadow-md px-4 md:px-8 py-4 flex items-center justify-between">
+          {/* Left */}
 
           <div className="flex items-center gap-4">
+            {/* Mobile Menu */}
+
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-2xl text-blue-700 lg:hidden"
+            >
+              <FaBars />
+            </button>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-blue-700">
+                Dashboard
+              </h2>
+
+              <p className="text-sm text-gray-500">
+                Welcome,
+                <span className="font-semibold text-blue-700">
+                  {" "}
+                  {user?.displayName || "Admin"}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Right */}
+
+          <div className="flex items-center gap-3">
             <img
               src={user?.photoURL || "https://i.ibb.co/4pDNDk1/avatar.png"}
-              alt=""
-              className="w-12 h-12 rounded-full border"
+              alt="User"
+              className="h-10 w-10 md:h-12 md:w-12 rounded-full border-2 border-blue-600 object-cover"
             />
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition"
+              className="flex items-center gap-2 rounded-lg bg-red-600 px-3 md:px-5 py-2 text-white transition hover:bg-red-700"
             >
               <FaSignOutAlt />
-              Logout
+
+              <span className="hidden md:inline">Logout</span>
             </button>
           </div>
         </header>
 
-        {/* Page */}
+        {/* Page Content */}
 
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <Outlet />
         </main>
       </div>

@@ -24,10 +24,12 @@ function AddMedicine() {
 
   const image = watch("image");
 
-  const purchasePrice = Number(watch("purchasePrice")) || 0;
-  const profitPercent = Number(watch("profitPercent")) || 0;
+  // const purchasePrice = Number(watch("purchasePrice")) || 0;
+  // const profitPercent = Number(watch("profitPercent")) || 0;
+  const mrpePrice = Number(watch("mrpePrice")) || 0;
+  const bikriPercent = Number(watch("bikriPercent")) || 0;
 
-  const sellingPrice = purchasePrice + (purchasePrice * profitPercent) / 100;
+  const sellingPrice = mrpePrice - (mrpePrice * bikriPercent) / 100;
 
   const [loading, setLoading] = useState(false);
 
@@ -36,10 +38,14 @@ function AddMedicine() {
       setLoading(true);
 
       data.purchasePrice = Number(data.purchasePrice);
+      data.mrpePrice = Number(data.mrpePrice); // ✅ ঠিক
       data.profitPercent = Number(data.profitPercent);
+      data.bikriPercent = Number(data.bikriPercent);
       data.stock = Number(data.stock);
       data.boxQuantity = Number(data.boxQuantity);
-      data.sellingPrice = Number(sellingPrice);
+      data.sellingPrice = Number(sellingPrice.toFixed(2));
+
+      console.log(data);
 
       await axios.post("http://localhost:5000/api/medicines", data);
 
@@ -55,7 +61,6 @@ function AddMedicine() {
       setLoading(false);
     }
   };
-
   return (
     <div className="mx-auto max-w-7xl rounded-3xl border border-gray-200 bg-white p-8 shadow-2xl">
       {/* Header */}
@@ -181,7 +186,33 @@ function AddMedicine() {
             {...register("purchasePrice")}
           />
         </div>
+        {/* mrp Price */}
+        <div>
+          <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
+            <FaMoneyBillWave className="text-green-600" />
+            Mrp Price
+          </label>
 
+          <input
+            type="number"
+            placeholder="100"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
+            {...register("mrpePrice")}
+          />
+        </div>
+        {/* bikri % */}
+        <div>
+          <label className="mb-2 font-semibold text-gray-700">
+            bikri Percentage (%)
+          </label>
+
+          <input
+            type="number"
+            placeholder="20"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
+            {...register("bikriPercent")}
+          />
+        </div>
         {/* Profit */}
 
         <div>

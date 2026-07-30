@@ -18,6 +18,9 @@ import MyOrders from "../pages/Dashboard/Customer/MyOrders";
 import DashboardHome from "../pages/Dashboard/Admin/DashboardHome";
 import Users from "../pages/Dashboard/Admin/Users";
 import SalesReport from "../pages/Dashboard/Admin/SalesReport";
+import AdminRoute from "./AdminRoute";
+import Unauthorized from "../pages/Unauthorized";
+// import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -26,8 +29,12 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Home />,
+        element: <AllItemMedicine />,
       },
+      // {
+      //   path: "all-item-medicine",
+      //   element: <AllItemMedicine />,
+      // },
       {
         path: "login",
         element: <Login />,
@@ -36,19 +43,31 @@ const router = createBrowserRouter([
         path: "register",
         element: <Register />,
       },
-      {
-        path: "dashboard",
-        element: <Dashboard />,
-      },
+      // {
+      //   path: "dashboard",
+      //   element: <Dashboard />,
+      // },
       {
         path: "forgot-password",
         element: <ForgotPassword />,
+      },
+      {
+        path: "my-orders",
+        element: <MyOrders />,
+      },
+      {
+        path: "/unauthorized",
+        element: <Unauthorized />,
       },
     ],
   },
   {
     path: "/dashboard",
-    element: <Dashboard />,
+    element: (
+      <AdminRoute>
+        <Dashboard />
+      </AdminRoute>
+    ),
     children: [
       {
         index: true,
@@ -67,18 +86,18 @@ const router = createBrowserRouter([
         path: "update-medicine/:id",
         element: <UpdateMedicine />,
       },
-      {
-        path: "all-item-medicine",
-        element: <AllItemMedicine />,
-      },
+      // {
+      //   path: "all-item-medicine",
+      //   element: <AllItemMedicine />,
+      // },
       {
         path: "all-orders",
         element: <AllOrders />,
       },
-      {
-        path: "my-orders",
-        element: <MyOrders />,
-      },
+      // {
+      //   path: "my-orders",
+      //   element: <MyOrders />,
+      // },
       {
         path: "users",
         element: <Users />,

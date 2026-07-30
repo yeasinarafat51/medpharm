@@ -234,7 +234,10 @@ function AllItemMedicine() {
                     </span>
 
                     <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-                      Stock : {medicine.stock}
+                      Persent {medicine.bikriPercent}
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
+                      MRP {medicine.mrpePrice}
                     </span>
                   </div>
 
