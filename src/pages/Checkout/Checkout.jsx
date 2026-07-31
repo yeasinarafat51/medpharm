@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
@@ -7,24 +7,41 @@ import useAuth from "../../hooks/useAuth";
 
 function Checkout() {
   const { cart, clearCart } = useCart();
-
   const { user } = useAuth();
-
   const navigate = useNavigate();
 
   const [address, setAddress] = useState("");
-
   const [phone, setPhone] = useState("");
-
   const [note, setNote] = useState("");
-
   const [loading, setLoading] = useState(false);
 
+  // Load Address & Phone from Database
+  useEffect(() => {
+    const loadUser = async () => {
+      if (!user?.email) return;
+
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/users/email/${user.email}`,
+        );
+
+        if (res.data.success) {
+          setAddress(res.data.user.address || "");
+          setPhone(res.data.user.phone || "");
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    loadUser();
+  }, [user]);
+
   const grandTotal = cart.reduce(
-    (sum, item) => sum + item.sellingPrice * item.quantity,
+    (sum, item) => sum + Number(item.sellingPrice) * Number(item.quantity),
     0,
   );
-  console.log("Cart:", cart);
+
   const handleOrder = async () => {
     if (cart.length === 0) {
       return Swal.fire({
@@ -33,7 +50,7 @@ function Checkout() {
       });
     }
 
-    if (!address || !phone) {
+    if (!address.trim() || !phone.trim()) {
       return Swal.fire({
         icon: "warning",
         title: "Address & Phone Required",
@@ -43,9 +60,16 @@ function Checkout() {
     try {
       setLoading(true);
 
+      // Update latest Address & Phone
+      await axios.put(`http://localhost:5000/api/users/email/${user.email}`, {
+        address,
+        phone,
+      });
+
       const orderData = {
         customerName: user.displayName,
         customerEmail: user.email,
+        uid: user.uid,
 
         address,
         phone,
@@ -55,20 +79,20 @@ function Checkout() {
           medicineId: item._id,
           medicineName: item.medicineName,
           company: item.company,
-          quantity: item.quantity,
-          unitPrice: item.sellingPrice,
-          totalPrice: item.sellingPrice * item.quantity,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.sellingPrice),
+          totalPrice: Number(item.sellingPrice) * Number(item.quantity),
         })),
 
         grandTotal,
 
         paymentStatus: "Unpaid",
-
         orderStatus: "Pending",
-
         orderDate: new Date(),
       };
-      console.log("Order Data:", orderData);
+
+      console.log(orderData);
+
       const res = await axios.post(
         "http://localhost:5000/api/orders",
         orderData,
@@ -86,7 +110,6 @@ function Checkout() {
       }
     } catch (error) {
       console.log(error);
-      console.log(error.response?.data);
 
       Swal.fire({
         icon: "error",
@@ -96,6 +119,7 @@ function Checkout() {
       setLoading(false);
     }
   };
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <h1 className="mb-8 text-4xl font-bold text-blue-700">Checkout</h1>
@@ -105,13 +129,13 @@ function Checkout() {
           <label className="font-semibold">Address</label>
 
           <textarea
+            rows={4}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             className="mt-2 w-full rounded border p-3"
-            rows={4}
           />
 
-          <label className="mt-6 block font-semibold">Phone</label>
+          <label className="mt-6 block font-semibold">Phone Number</label>
 
           <input
             type="text"
@@ -123,10 +147,10 @@ function Checkout() {
           <label className="mt-6 block font-semibold">Note</label>
 
           <textarea
+            rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="mt-2 w-full rounded border p-3"
-            rows={3}
           />
         </div>
 
@@ -154,9 +178,9 @@ function Checkout() {
           <button
             onClick={handleOrder}
             disabled={loading}
-            className="mt-8 w-full rounded bg-blue-600 py-3 text-white hover:bg-blue-700"
+            className="mt-8 w-full rounded bg-blue-600 py-3 text-white hover:bg-blue-700 disabled:bg-gray-400"
           >
-            {loading ? "Placing..." : "Place Order"}
+            {loading ? "Placing Order..." : "Place Order"}
           </button>
         </div>
       </div>

@@ -35,6 +35,7 @@ function Register() {
       await axios.post("http://localhost:5000/api/users", {
         name: data.name,
         address: data.address,
+        phone: data.phone,
         email: data.email,
         photo: "",
       });
@@ -107,6 +108,18 @@ function Register() {
         />
 
         {errors.address && (
+          <p className="text-red-500 mb-2">{errors.address.message}</p>
+        )}
+        <input
+          type="text"
+          placeholder="Phone Number"
+          className="input input-bordered w-full mb-3"
+          {...register("phone", {
+            required: "phone is required",
+          })}
+        />
+
+        {errors.phone && (
           <p className="text-red-500 mb-2">{errors.address.message}</p>
         )}
         {/* Password */}

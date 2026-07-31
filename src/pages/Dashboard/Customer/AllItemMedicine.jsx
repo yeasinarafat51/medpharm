@@ -244,27 +244,27 @@ function AllItemMedicine() {
                     </span>
                   </div>
 
-                  <button
+                  {/* <button
                     onClick={() => openOrderModal(medicine)}
                     className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
                   >
                     Order Now
-                  </button>
+                  </button> */}
                   <button
-  onClick={() => {
-    addToCart(medicine);
+                    onClick={() => {
+                      addToCart(medicine);
 
-    Swal.fire({
-      icon: "success",
-      title: "Added To Cart",
-      timer: 1200,
-      showConfirmButton: false,
-    });
-  }}
-  className="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
->
-  Add To Cart
-</button>
+                      Swal.fire({
+                        icon: "success",
+                        title: "Added To Cart",
+                        timer: 1200,
+                        showConfirmButton: false,
+                      });
+                    }}
+                    className="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+                  >
+                    Add To Cart
+                  </button>
                 </div>
               </div>
             ))}

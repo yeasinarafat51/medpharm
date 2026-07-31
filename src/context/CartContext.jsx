@@ -1,48 +1,77 @@
 import { createContext, useEffect, useState } from "react";
+import useAuth from "../hooks/useAuth";
 
 export const CartContext = createContext();
 
 function CartProvider({ children }) {
-  const [cart, setCart] = useState(() => {
-    const storedCart = localStorage.getItem("medpharm-cart");
-    return storedCart ? JSON.parse(storedCart) : [];
-  });
+  const { user } = useAuth();
 
+  // প্রতিটি User-এর জন্য আলাদা Cart Key
+  const cartKey = user?.email
+    ? `medpharm-cart-${user.email}`
+    : "medpharm-cart-guest";
+
+  const [cart, setCart] = useState([]);
+
+  // User পরিবর্তন হলে Cart Load হবে
   useEffect(() => {
-    localStorage.setItem("medpharm-cart", JSON.stringify(cart));
-  }, [cart]);
+    const storedCart = localStorage.getItem(cartKey);
 
-  const addToCart = (medicine) => {
-    const existing = cart.find((item) => item._id === medicine._id);
-
-    if (existing) {
-      const updatedCart = cart.map((item) =>
-        item._id === medicine._id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      );
-
-      setCart(updatedCart);
+    if (storedCart) {
+      setCart(JSON.parse(storedCart));
     } else {
-      setCart([...cart, { ...medicine, quantity: 1 }]);
+      setCart([]);
     }
+  }, [cartKey]);
+
+  // Cart Save হবে User অনুযায়ী
+  useEffect(() => {
+    localStorage.setItem(cartKey, JSON.stringify(cart));
+  }, [cart, cartKey]);
+
+  // ==========================
+  // Add To Cart
+  // ==========================
+  const addToCart = (medicine) => {
+    setCart((prevCart) => {
+      const existing = prevCart.find((item) => item._id === medicine._id);
+
+      if (existing) {
+        return prevCart.map((item) =>
+          item._id === medicine._id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        );
+      }
+
+      return [...prevCart, { ...medicine, quantity: 1 }];
+    });
   };
 
+  // ==========================
+  // Remove
+  // ==========================
   const removeFromCart = (id) => {
-    setCart(cart.filter((item) => item._id !== id));
+    setCart((prevCart) => prevCart.filter((item) => item._id !== id));
   };
 
+  // ==========================
+  // Increase
+  // ==========================
   const increaseQuantity = (id) => {
-    setCart(
-      cart.map((item) =>
+    setCart((prevCart) =>
+      prevCart.map((item) =>
         item._id === id ? { ...item, quantity: item.quantity + 1 } : item,
       ),
     );
   };
 
+  // ==========================
+  // Decrease
+  // ==========================
   const decreaseQuantity = (id) => {
-    setCart(
-      cart
+    setCart((prevCart) =>
+      prevCart
         .map((item) =>
           item._id === id ? { ...item, quantity: item.quantity - 1 } : item,
         )
@@ -50,8 +79,12 @@ function CartProvider({ children }) {
     );
   };
 
+  // ==========================
+  // Clear Cart
+  // ==========================
   const clearCart = () => {
     setCart([]);
+    localStorage.removeItem(cartKey);
   };
 
   return (
