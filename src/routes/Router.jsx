@@ -20,6 +20,10 @@ import Users from "../pages/Dashboard/Admin/Users";
 import SalesReport from "../pages/Dashboard/Admin/SalesReport";
 import AdminRoute from "./AdminRoute";
 import Unauthorized from "../pages/Unauthorized";
+import MyInvoices from "../pages/Dashboard/Customer/MyInvoices";
+import InvoiceDetails from "../pages/Dashboard/Customer/InvoiceDetails";
+import Cart from "../pages/Cart/Cart";
+import Checkout from "../pages/Checkout/Checkout";
 // import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
   {
@@ -30,6 +34,14 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <AllItemMedicine />,
+      },
+      {
+        path: "cart",
+        element: <Cart />,
+      },
+      {
+        path: "checkout",
+        element: <Checkout />,
       },
       // {
       //   path: "all-item-medicine",
@@ -54,6 +66,14 @@ const router = createBrowserRouter([
       {
         path: "my-orders",
         element: <MyOrders />,
+      },
+      {
+        path: "my-invoices",
+        element: <MyInvoices />,
+      },
+      {
+        path: "/invoice/:invoiceNo",
+        element: <InvoiceDetails />,
       },
       {
         path: "/unauthorized",
@@ -102,6 +122,14 @@ const router = createBrowserRouter([
         path: "users",
         element: <Users />,
       },
+      // {
+      //   path: "my-invoices",
+      //   element: <MyInvoices />,
+      // },
+      // {
+      //   path: "invoice/:id",
+      //   element: <InvoiceDetails />,
+      // },
       {
         path: "sales-report",
         element: <SalesReport />,

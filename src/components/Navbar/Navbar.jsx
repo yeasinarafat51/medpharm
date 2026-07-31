@@ -4,11 +4,13 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { FaBars, FaTimes } from "react-icons/fa";
 import useAuth from "../../hooks/useAuth";
+import { FaShoppingCart } from "react-icons/fa";
+import useCart from "../../hooks/useCart";
 // import useAuth from "../hooks/useAuth";
 
 function Navbar() {
   const { user, logoutUser } = useAuth();
-
+  const { cart } = useCart();
   const navigate = useNavigate();
 
   const [role, setRole] = useState("");
@@ -79,6 +81,20 @@ function Navbar() {
               My Orders
             </NavLink>
           )}
+          {user && (
+            <NavLink to="/cart" className={navLinkClass}>
+              <div className="relative">
+                <FaShoppingCart size={22} />
+
+                {cart.length > 0 && (
+                  <span className="absolute -right-3 -top-3 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white">
+                    {cart.length}
+                  </span>
+                )}
+              </div>
+            </NavLink>
+          )}
+          {user && <NavLink to="/my-invoices">My Invoices</NavLink>}
 
           {(role === "admin" || role === "super-admin") && (
             <NavLink to="/dashboard" className={navLinkClass}>

@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import useAuth from "../../../hooks/useAuth";
+import useCart from "../../../hooks/useCart";
+// import Swal from "sweetalert2";
 
 function AllItemMedicine() {
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const [medicines, setMedicines] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -247,6 +250,21 @@ function AllItemMedicine() {
                   >
                     Order Now
                   </button>
+                  <button
+  onClick={() => {
+    addToCart(medicine);
+
+    Swal.fire({
+      icon: "success",
+      title: "Added To Cart",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+  }}
+  className="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+>
+  Add To Cart
+</button>
                 </div>
               </div>
             ))}

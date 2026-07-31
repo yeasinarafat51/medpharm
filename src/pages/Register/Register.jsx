@@ -34,6 +34,7 @@ function Register() {
       // MongoDB-তে User Save
       await axios.post("http://localhost:5000/api/users", {
         name: data.name,
+        address: data.address,
         email: data.email,
         photo: "",
       });
@@ -96,7 +97,18 @@ function Register() {
         {errors.email && (
           <p className="text-red-500 mb-2">{errors.email.message}</p>
         )}
+        <input
+          type="text"
+          placeholder="Full Address"
+          className="input input-bordered w-full mb-3"
+          {...register("address", {
+            required: "Name is required",
+          })}
+        />
 
+        {errors.address && (
+          <p className="text-red-500 mb-2">{errors.address.message}</p>
+        )}
         {/* Password */}
         <input
           type="password"

@@ -1,142 +1,205 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { Link } from "react-router-dom";
 import useAuth from "../../../hooks/useAuth";
 
 function MyOrders() {
   const { user } = useAuth();
 
   const [orders, setOrders] = useState([]);
-
   const [loading, setLoading] = useState(true);
 
-  const loadOrders = async () => {
+  useEffect(() => {
     if (!user?.email) return;
 
-    try {
-      setLoading(true);
+    const loadOrders = async () => {
+      try {
+        setLoading(true);
 
-      const res = await axios.get(
-        `http://localhost:5000/api/orders/my-orders/${user.email}`,
-      );
+        const res = await axios.get(
+          `http://localhost:5000/api/orders/my-orders/${user.email}`,
+        );
 
-      setOrders(res.data);
-    } catch (error) {
-      console.log(error);
+        console.log(res.data);
 
-      Swal.fire({
-        icon: "error",
-        title: "Failed to load orders",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (res.data.success) {
+          setOrders(res.data.orders);
+        } else {
+          setOrders([]);
+        }
+      } catch (error) {
+        console.log(error);
 
-  useEffect(() => {
+        Swal.fire({
+          icon: "error",
+          title: "Failed to Load Orders",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadOrders();
   }, [user]);
 
   if (loading) {
     return (
-      <div className="py-20 text-center text-2xl font-bold">Loading...</div>
+      <div className="flex h-[70vh] items-center justify-center">
+        <h2 className="text-3xl font-bold text-blue-600">Loading Orders...</h2>
+      </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-blue-700">My Orders</h1>
+    <div className="mx-auto max-w-7xl p-6">
+      <h1 className="mb-8 text-4xl font-bold text-blue-700">My Orders</h1>
 
-        <p className="mt-2 text-gray-500">
-          Here are all of your medicine orders.
-        </p>
-      </div>{" "}
-      <div className="overflow-x-auto rounded-xl bg-white shadow">
-        <table className="min-w-full">
-          <thead className="bg-blue-600 text-white">
-            <tr>
-              <th className="px-4 py-3">#</th>
+      {orders.length === 0 ? (
+        <div className="rounded-xl bg-white p-10 text-center shadow">
+          <h2 className="text-2xl font-bold text-gray-500">No Orders Found</h2>
+        </div>
+      ) : (
+        orders.map((order) => (
+          <div key={order._id} className="mb-8 rounded-xl bg-white shadow-lg">
+            {/* Header */}
 
-              <th className="px-4 py-3">Medicine</th>
+            <div className="flex flex-wrap items-center justify-between border-b bg-blue-50 p-6">
+              <div>
+                <h2 className="text-xl font-bold text-blue-700">Order ID</h2>
 
-              <th className="px-4 py-3">Company</th>
+                <p className="text-gray-500 break-all">{order._id}</p>
 
-              <th className="px-4 py-3">Quantity</th>
+                <p className="mt-2 text-sm text-gray-500">
+                  {new Date(order.orderDate).toLocaleString()}
+                </p>
+              </div>
 
-              <th className="px-4 py-3">Unit Price</th>
+              <div className="text-right">
+                <h2 className="text-2xl font-bold text-green-600">
+                  ৳ {order.grandTotal}
+                </h2>
 
-              <th className="px-4 py-3">Total Price</th>
+                <div className="mt-3 space-y-2">
+                  <span
+                    className={`inline-block rounded-full px-4 py-1 text-white ${
+                      order.orderStatus === "Pending"
+                        ? "bg-yellow-500"
+                        : order.orderStatus === "Processing"
+                          ? "bg-blue-600"
+                          : order.orderStatus === "Completed"
+                            ? "bg-green-600"
+                            : "bg-red-600"
+                    }`}
+                  >
+                    {order.orderStatus}
+                  </span>
 
-              <th className="px-4 py-3">Status</th>
+                  <br />
 
-              <th className="px-4 py-3">Order Date</th>
-            </tr>
-          </thead>
+                  <span
+                    className={`inline-block rounded-full px-4 py-1 text-white ${
+                      order.paymentStatus === "Paid"
+                        ? "bg-green-600"
+                        : "bg-red-600"
+                    }`}
+                  >
+                    {order.paymentStatus}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-          <tbody>
-            {orders.length === 0 ? (
-              <tr>
-                <td colSpan="8" className="py-10 text-center text-gray-500">
-                  No Orders Found
-                </td>
-              </tr>
-            ) : (
-              orders.map((order, index) => (
-                <tr key={order._id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3">{index + 1}</td>
+            {/* Medicine List */}
 
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={
-                          order.image ||
-                          "https://placehold.co/60x60?text=Medicine"
-                        }
-                        alt={order.medicineName}
-                        className="h-14 w-14 rounded-lg object-cover border"
-                      />
+            <div className="divide-y">
+              {order.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={
+                        item.image ||
+                        "https://placehold.co/100x100?text=Medicine"
+                      }
+                      alt={item.medicineName}
+                      className="h-24 w-24 rounded-lg border object-cover"
+                    />
 
-                      <div>
-                        <h3 className="font-semibold">{order.medicineName}</h3>
-                      </div>
+                    <div>
+                      <h3 className="text-xl font-bold">{item.medicineName}</h3>
+
+                      <p className="text-gray-500">{item.company}</p>
                     </div>
-                  </td>
+                  </div>
 
-                  <td className="px-4 py-3">{order.company}</td>
+                  <div className="grid grid-cols-3 gap-6 text-center">
+                    <div>
+                      <p className="text-gray-500">Quantity</p>
 
-                  <td className="px-4 py-3 font-semibold">{order.quantity}</td>
+                      <h3 className="font-bold">{item.quantity}</h3>
+                    </div>
 
-                  <td className="px-4 py-3">৳ {order.unitPrice}</td>
+                    <div>
+                      <p className="text-gray-500">Unit Price</p>
 
-                  <td className="px-4 py-3 font-bold text-green-600">
-                    ৳ {order.totalPrice}
-                  </td>
+                      <h3 className="font-bold">৳ {item.unitPrice}</h3>
+                    </div>
 
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-4 py-1 text-sm font-semibold text-white
-                      ${
-                        order.status === "Pending"
-                          ? "bg-yellow-500"
-                          : order.status === "Processing"
-                            ? "bg-blue-600"
-                            : "bg-green-600"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
+                    <div>
+                      <p className="text-gray-500">Total</p>
 
-                  <td className="px-4 py-3">
-                    {new Date(order.orderDate).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                      <h3 className="font-bold text-green-600">
+                        ৳ {item.totalPrice || item.total}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t p-6">
+              <div className="space-y-2">
+                <p>
+                  <strong>Customer :</strong> {order.customerName}
+                </p>
+
+                <p>
+                  <strong>Email :</strong> {order.customerEmail}
+                </p>
+
+                <p>
+                  <strong>Phone :</strong> {order.phone || "N/A"}
+                </p>
+
+                <p>
+                  <strong>Address :</strong> {order.address || "N/A"}
+                </p>
+              </div>
+
+              {order.invoiceNo ? (
+                <Link
+                  to={`/invoice/${order.invoiceNo}`}
+                  className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
+                >
+                  View Invoice
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="cursor-not-allowed rounded-lg bg-gray-400 px-6 py-3 text-white"
+                >
+                  Invoice Not Available
+                </button>
+              )}
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
