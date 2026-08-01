@@ -13,7 +13,7 @@ function UpdateMedicine() {
 
   useEffect(() => {
     axios
-      .get(`http://localhost:5000/api/medicines/${id}`)
+      .get(`https://medpharm-server-sgs6.vercel.app/api/medicines/${id}`)
       .then((res) => reset(res.data));
   }, [id, reset]);
 
@@ -28,7 +28,7 @@ function UpdateMedicine() {
       data.sellingPrice = sellingPrice;
 
       const res = await axios.put(
-        `http://localhost:5000/api/medicines/${id}`,
+        `https://medpharm-server-sgs6.vercel.app/api/medicines/${id}`,
         data,
       );
 

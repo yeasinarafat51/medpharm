@@ -14,7 +14,9 @@ function AllOrders() {
     try {
       setLoading(true);
 
-      const res = await axios.get("http://localhost:5000/api/orders");
+      const res = await axios.get(
+        "https://medpharm-server-sgs6.vercel.app/api/orders",
+      );
 
       if (res.data.success) {
         setOrders(res.data.orders || []);
@@ -42,9 +44,12 @@ function AllOrders() {
   // =============================
   const updateStatus = async (id, orderStatus) => {
     try {
-      const res = await axios.patch(`http://localhost:5000/api/orders/${id}`, {
-        orderStatus,
-      });
+      const res = await axios.patch(
+        `https://medpharm-server-sgs6.vercel.app/api/orders/${id}`,
+        {
+          orderStatus,
+        },
+      );
 
       if (res.data.success) {
         Swal.fire({
@@ -72,7 +77,7 @@ function AllOrders() {
   const updatePayment = async (id, paymentStatus) => {
     try {
       const res = await axios.patch(
-        `http://localhost:5000/api/orders/payment/${id}`,
+        `https://medpharm-server-sgs6.vercel.app/api/orders/payment/${id}`,
         {
           paymentStatus,
         },

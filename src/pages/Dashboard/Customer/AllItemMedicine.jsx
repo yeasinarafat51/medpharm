@@ -35,7 +35,7 @@ function AllItemMedicine() {
       setLoading(true);
 
       const res = await axios.get(
-        `http://localhost:5000/api/medicines?search=${search}&page=${page}&limit=${limit}&sort=asc`,
+        `https://medpharm-server-sgs6.vercel.app/api/medicines?search=${search}&page=${page}&limit=${limit}&sort=asc`,
       );
 
       setMedicines(res.data.medicines);
@@ -147,7 +147,10 @@ function AllItemMedicine() {
         totalPrice: Number(quantity) * Number(selectedMedicine.sellingPrice),
       };
 
-      const res = await axios.post("http://localhost:5000/api/orders", order);
+      const res = await axios.post(
+        "https://medpharm-server-sgs6.vercel.app/api/orders",
+        order,
+      );
 
       if (res.data.success) {
         Swal.fire({

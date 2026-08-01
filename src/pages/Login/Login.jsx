@@ -31,11 +31,14 @@ function Login() {
       console.log("Firebase Token:", token);
 
       // Backend API
-      const res = await axios.get("http://localhost:5000/api/test/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await axios.get(
+        "https://medpharm-server-sgs6.vercel.app/api/test/profile",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       console.log(res.data);
 
@@ -66,11 +69,14 @@ function Login() {
 
       const token = await result.user.getIdToken();
 
-      const res = await axios.get("http://localhost:5000/api/test/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await axios.get(
+        "https://medpharm-server-sgs6.vercel.app/api/test/profile",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       console.log(res.data);
 

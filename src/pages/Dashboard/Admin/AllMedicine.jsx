@@ -20,7 +20,7 @@ function AllMedicine() {
       setLoading(true);
 
       const res = await axios.get(
-        `http://localhost:5000/api/medicines?search=${search}&page=${page}&limit=${limit}&sort=${sort}`,
+        `https://medpharm-server-sgs6.vercel.app/api/medicines?search=${search}&page=${page}&limit=${limit}&sort=${sort}`,
       );
 
       setMedicines(res.data.medicines);
@@ -51,7 +51,9 @@ function AllMedicine() {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:5000/api/medicines/${id}`);
+        await axios.delete(
+          `https://medpharm-server-sgs6.vercel.app/api/medicines/${id}`,
+        );
 
         Swal.fire({
           icon: "success",

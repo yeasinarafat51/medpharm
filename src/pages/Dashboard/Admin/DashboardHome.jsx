@@ -24,7 +24,7 @@ function DashboardHome() {
       setLoading(true);
 
       const res = await axios.get(
-        "http://localhost:5000/api/dashboard/admin-stats",
+        "https://medpharm-server-sgs6.vercel.app/api/dashboard/admin-stats",
       );
 
       setStats(res.data);

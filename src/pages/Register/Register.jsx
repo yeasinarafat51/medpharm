@@ -32,7 +32,7 @@ function Register() {
       await updateUserProfile(data.name, "");
 
       // MongoDB-তে User Save
-      await axios.post("http://localhost:5000/api/users", {
+      await axios.post("https://medpharm-server-sgs6.vercel.app/api/users", {
         name: data.name,
         address: data.address,
         phone: data.phone,

@@ -17,14 +17,14 @@ function SalesReport() {
 
       // Sales Report
       const res = await axios.get(
-        "http://localhost:5000/api/dashboard/sales-report",
+        "https://medpharm-server-sgs6.vercel.app/api/dashboard/sales-report",
       );
 
       setReport(res.data);
 
       // Recent Orders
       const orderRes = await axios.get(
-        "http://localhost:5000/api/dashboard/recent-orders",
+        "https://medpharm-server-sgs6.vercel.app/api/dashboard/recent-orders",
       );
 
       setOrders(orderRes.data.orders);

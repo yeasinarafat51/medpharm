@@ -47,7 +47,10 @@ function AddMedicine() {
 
       console.log(data);
 
-      await axios.post("http://localhost:5000/api/medicines", data);
+      await axios.post(
+        "https://medpharm-server-sgs6.vercel.app/api/medicines",
+        data,
+      );
 
       Swal.fire({
         icon: "success",

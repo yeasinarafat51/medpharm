@@ -22,7 +22,7 @@ function Checkout() {
 
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/users/email/${user.email}`,
+          `https://medpharm-server-sgs6.vercel.app/api/users/email/${user.email}`,
         );
 
         if (res.data.success) {
@@ -61,10 +61,13 @@ function Checkout() {
       setLoading(true);
 
       // Update latest Address & Phone
-      await axios.put(`http://localhost:5000/api/users/email/${user.email}`, {
-        address,
-        phone,
-      });
+      await axios.put(
+        `https://medpharm-server-sgs6.vercel.app/api/users/email/${user.email}`,
+        {
+          address,
+          phone,
+        },
+      );
 
       const orderData = {
         customerName: user.displayName,
@@ -105,7 +108,7 @@ function Checkout() {
       console.log(orderData);
 
       const res = await axios.post(
-        "http://localhost:5000/api/orders",
+        "https://medpharm-server-sgs6.vercel.app/api/orders",
         orderData,
       );
 

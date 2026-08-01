@@ -24,7 +24,7 @@ function Navbar() {
 
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/users/email/${user.email}`,
+          `https://medpharm-server-sgs6.vercel.app/api/users/email/${user.email}`,
         );
 
         if (res.data.success) {

@@ -20,7 +20,7 @@ function AdminRoute({ children }) {
 
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/users/email/${user.email}`,
+          `https://medpharm-server-sgs6.vercel.app/api/users/email/${user.email}`,
         );
 
         setRole(res.data.user.role);

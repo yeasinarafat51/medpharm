@@ -18,7 +18,7 @@ function MyOrders() {
         setLoading(true);
 
         const res = await axios.get(
-          `http://localhost:5000/api/orders/my-orders/${user.email}`,
+          `https://medpharm-server-sgs6.vercel.app/api/orders/my-orders/${user.email}`,
         );
 
         console.log(res.data);
