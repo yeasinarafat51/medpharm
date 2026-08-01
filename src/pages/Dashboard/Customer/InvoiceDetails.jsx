@@ -5,10 +5,28 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 function InvoiceDetails() {
-  const { invoiceNo } = useParams();
+  const { id } = useParams();
 
-  const [invoice, setInvoice] = useState(null);
+  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadOrder();
+  }, [id]);
+
+  const loadOrder = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/orders/${id}`);
+
+      if (res.data.success) {
+        setOrder(res.data.order);
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const downloadPDF = async () => {
     const input = document.getElementById("invoice");
@@ -20,42 +38,23 @@ function InvoiceDetails() {
     const pdf = new jsPDF("p", "mm", "a4");
 
     const width = 210;
+
     const height = (canvas.height * width) / canvas.width;
 
     pdf.addImage(imgData, "PNG", 0, 0, width, height);
 
-    pdf.save(`${invoice.invoiceNo}.pdf`);
+    pdf.save(`Invoice-${order._id}.pdf`);
   };
-
-  useEffect(() => {
-    const loadInvoice = async () => {
-      try {
-        const res = await axios.get(
-          `http://localhost:5000/api/orders/invoice/${invoiceNo}`,
-        );
-
-        if (res.data.success) {
-          setInvoice(res.data.invoice);
-        }
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInvoice();
-  }, [invoiceNo]);
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <h2 className="text-3xl font-bold text-blue-600">Loading Invoice...</h2>
+        <h2 className="text-3xl font-bold">Loading Invoice...</h2>
       </div>
     );
   }
 
-  if (!invoice) {
+  if (!order) {
     return (
       <div className="flex h-screen items-center justify-center">
         <h2 className="text-3xl font-bold text-red-600">Invoice Not Found</h2>
@@ -70,161 +69,150 @@ function InvoiceDetails() {
         className="mx-auto max-w-6xl rounded-xl bg-white p-8 shadow-lg"
       >
         {/* Header */}
-        <div className="flex flex-col justify-between gap-5 border-b pb-6 md:flex-row">
+
+        <div className="flex justify-between border-b pb-6">
           <div>
             <h1 className="text-4xl font-bold text-blue-700">💊 MedPharm</h1>
 
-            <p className="text-gray-500">Pharmacy Management System</p>
+            <p>Pharmacy Management System</p>
 
-            <p className="mt-2 text-gray-500">Cumilla, Bangladesh</p>
+            <p>Cumilla, Bangladesh</p>
           </div>
 
-          <div className="text-left md:text-right">
+          <div className="text-right">
             <h2 className="text-3xl font-bold">INVOICE</h2>
 
-            <p className="mt-2">
-              <strong>Invoice No:</strong> {invoice.invoiceNo}
+            <p>
+              <strong>Invoice :</strong>
+
+              {order.invoiceNo || `INV-${order._id.slice(-6)}`}
             </p>
 
             <p>
-              <strong>Date:</strong>{" "}
-              {new Date(invoice.createdAt).toLocaleDateString()}
+              <strong>Date :</strong>
+
+              {new Date(order.orderDate).toLocaleDateString()}
             </p>
           </div>
         </div>
 
         {/* Customer */}
-        <div className="mt-8 grid gap-8 md:grid-cols-2">
+
+        <div className="mt-8 grid md:grid-cols-2 gap-8">
           <div>
-            <h3 className="mb-4 text-xl font-bold">Customer Information</h3>
+            <h2 className="text-xl font-bold mb-3">Customer</h2>
 
-            <p>
-              <strong>Name:</strong> {invoice.customerName}
-            </p>
+            <p>Name : {order.customerName}</p>
 
-            <p>
-              <strong>Email:</strong> {invoice.customerEmail}
-            </p>
+            <p>Email : {order.customerEmail}</p>
 
-            <p>
-              <strong>Phone:</strong> {invoice.phone}
-            </p>
+            <p>Phone : {order.phone}</p>
 
-            <p>
-              <strong>Address:</strong> {invoice.address}
-            </p>
+            <p>Address : {order.address}</p>
           </div>
 
           <div>
-            <h3 className="mb-4 text-xl font-bold">Payment Information</h3>
+            <h2 className="text-xl font-bold mb-3">Order Status</h2>
 
             <p>
-              <strong>Payment Status:</strong>
-
-              <span
-                className={`ml-3 rounded-full px-3 py-1 text-white ${
-                  invoice.paymentStatus === "Paid"
-                    ? "bg-green-600"
-                    : "bg-red-600"
-                }`}
-              >
-                {invoice.paymentStatus}
-              </span>
+              Payment :
+              <span className="ml-2 font-bold">{order.paymentStatus}</span>
             </p>
 
-            <p className="mt-4">
-              <strong>Order Status:</strong> {invoice.orderStatus}
+            <p>
+              Status :
+              <span className="ml-2 font-bold">{order.orderStatus}</span>
             </p>
           </div>
         </div>
 
         {/* Table */}
+
         <div className="mt-10 overflow-x-auto">
-          <table className="min-w-full border">
+          <table className="table w-full">
             <thead className="bg-blue-600 text-white">
               <tr>
-                <th className="border p-3">#</th>
-                <th className="border p-3">Medicine</th>
-                <th className="border p-3">Company</th>
-                <th className="border p-3">Qty</th>
-                <th className="border p-3">Unit Price</th>
-                <th className="border p-3">Total</th>
+                <th>#</th>
+                <th>Medicine</th>
+                <th>Company</th>
+                <th>MRP</th>
+                <th>Discount</th>
+                <th>Selling Price</th>
+                <th>Qty</th>
+                <th>Total</th>
               </tr>
             </thead>
 
             <tbody>
-              {invoice.items.map((item, index) => (
-                <tr key={index} className="text-center">
-                  <td className="border p-3">{index + 1}</td>
+              {(order.items || []).map((item, index) => (
+                <tr key={index}>
+                  <td>{index + 1}</td>
 
-                  <td className="border p-3">{item.medicineName}</td>
+                  <td>{item.medicineName}</td>
 
-                  <td className="border p-3">{item.company}</td>
+                  <td>{item.company}</td>
 
-                  <td className="border p-3">{item.quantity}</td>
+                  <td>৳ {item.mrp}</td>
 
-                  <td className="border p-3">৳ {item.unitPrice}</td>
+                  <td>{item.discount}%</td>
 
-                  <td className="border p-3 font-bold">৳ {item.total}</td>
+                  <td>৳ {item.unitPrice}</td>
+
+                  <td>{item.quantity}</td>
+
+                  <td>৳ {item.totalPrice}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Summary */}
+        {/* Total */}
+
         <div className="mt-10 flex justify-end">
-          <div className="w-full max-w-sm rounded-lg border p-6">
+          <div className="w-80 rounded-lg border p-6">
             <div className="mb-3 flex justify-between">
-              <span>Subtotal</span>
+              <span>Total Items</span>
 
-              <span>৳ {invoice.subtotal}</span>
+              <span>{order.items?.length || 0}</span>
             </div>
 
             <div className="mb-3 flex justify-between">
-              <span>Discount</span>
+              <span>Payment</span>
 
-              <span>৳ {invoice.discount}</span>
+              <span>{order.paymentStatus}</span>
             </div>
 
-            <div className="mb-3 flex justify-between">
-              <span>VAT</span>
+            <hr />
 
-              <span>৳ {invoice.vat}</span>
-            </div>
-
-            <hr className="my-3" />
-
-            <div className="flex justify-between text-2xl font-bold text-blue-700">
+            <div className="mt-3 flex justify-between text-2xl font-bold">
               <span>Grand Total</span>
 
-              <span>৳ {invoice.grandTotal}</span>
+              <span>৳ {order.grandTotal}</span>
             </div>
           </div>
         </div>
 
         {/* Buttons */}
-        <div className="mt-10 flex flex-wrap gap-4">
+
+        <div className="mt-10 flex gap-4">
           <button
             onClick={() => window.print()}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
+            className="rounded bg-blue-600 px-6 py-3 text-white"
           >
-            🖨 Print Invoice
+            Print Invoice
           </button>
 
           <button
             onClick={downloadPDF}
-            className="rounded-lg bg-green-600 px-6 py-3 text-white hover:bg-green-700"
+            className="rounded bg-green-600 px-6 py-3 text-white"
           >
-            ⬇ Download PDF
+            Download PDF
           </button>
         </div>
 
-        {/* Footer */}
-        <div className="mt-16 border-t pt-6 text-center text-gray-500">
-          <p>Thank you for choosing MedPharm.</p>
-
-          <p className="mt-2">This is a computer generated invoice.</p>
+        <div className="mt-12 border-t pt-6 text-center text-gray-500">
+          Thank you for choosing MedPharm.
         </div>
       </div>
     </div>

@@ -67,10 +67,10 @@ const router = createBrowserRouter([
         path: "my-orders",
         element: <MyOrders />,
       },
-      {
-        path: "my-invoices",
-        element: <MyInvoices />,
-      },
+      // {
+      //   path: "my-invoices",
+      //   element: <MyInvoices />,
+      // },
       {
         path: "/invoice/:invoiceNo",
         element: <InvoiceDetails />,
@@ -106,6 +106,10 @@ const router = createBrowserRouter([
         path: "update-medicine/:id",
         element: <UpdateMedicine />,
       },
+      {
+        path: "my-invoices",
+        element: <MyInvoices />,
+      },
       // {
       //   path: "all-item-medicine",
       //   element: <AllItemMedicine />,
@@ -126,10 +130,18 @@ const router = createBrowserRouter([
       //   path: "my-invoices",
       //   element: <MyInvoices />,
       // },
-      // {
-      //   path: "invoice/:id",
-      //   element: <InvoiceDetails />,
-      // },
+      {
+        path: "invoice/:id",
+        element: <InvoiceDetails />,
+      },
+      {
+        path: "/dashboard/admin/invoice/:id",
+        element: <MyInvoices />,
+      },
+      {
+        path: "invoice/:id",
+        element: <InvoiceDetails />,
+      },
       {
         path: "sales-report",
         element: <SalesReport />,

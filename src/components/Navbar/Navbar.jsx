@@ -94,7 +94,7 @@ function Navbar() {
               </div>
             </NavLink>
           )}
-          {user && <NavLink to="/my-invoices">My Invoices</NavLink>}
+          {/* {user && <NavLink to="/my-invoices">My Invoices</NavLink>} */}
 
           {(role === "admin" || role === "super-admin") && (
             <NavLink to="/dashboard" className={navLinkClass}>

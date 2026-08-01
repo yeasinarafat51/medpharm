@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { Link } from "react-router-dom";
 
 function AllOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // =============================
+  // Load Orders
+  // =============================
   const loadOrders = async () => {
     try {
       setLoading(true);
 
       const res = await axios.get("http://localhost:5000/api/orders");
 
-      setOrders(res.data);
+      if (res.data.success) {
+        setOrders(res.data.orders || []);
+      } else {
+        setOrders([]);
+      }
     } catch (error) {
       console.log(error);
 
@@ -29,120 +37,264 @@ function AllOrders() {
     loadOrders();
   }, []);
 
-  const updateStatus = async (id, status) => {
+  // =============================
+  // Update Order Status
+  // =============================
+  const updateStatus = async (id, orderStatus) => {
     try {
-      await axios.patch(`http://localhost:5000/api/orders/${id}`, { status });
-
-      Swal.fire({
-        icon: "success",
-        title: "Status Updated",
-        timer: 1200,
-        showConfirmButton: false,
+      const res = await axios.patch(`http://localhost:5000/api/orders/${id}`, {
+        orderStatus,
       });
 
-      loadOrders();
+      if (res.data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Order Updated",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+
+        loadOrders();
+      }
     } catch (error) {
+      console.log(error);
+
       Swal.fire({
         icon: "error",
         title: "Update Failed",
-        text: error.message,
+      });
+    }
+  };
+
+  // =============================
+  // Update Payment Status
+  // =============================
+  const updatePayment = async (id, paymentStatus) => {
+    try {
+      const res = await axios.patch(
+        `http://localhost:5000/api/orders/payment/${id}`,
+        {
+          paymentStatus,
+        },
+      );
+
+      if (res.data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Payment Updated",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+
+        loadOrders();
+      }
+    } catch (error) {
+      console.log(error);
+
+      Swal.fire({
+        icon: "error",
+        title: "Payment Update Failed",
       });
     }
   };
 
   if (loading) {
     return (
-      <div className="py-20 text-center text-2xl font-bold">Loading...</div>
+      <div className="flex h-screen items-center justify-center">
+        <h1 className="text-3xl font-bold">Loading...</h1>
+      </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-blue-700">All Orders</h1>
+    <div className="mx-auto max-w-7xl p-6">
+      <h1 className="mb-8 text-4xl font-bold text-blue-700">
+        All Customer Orders
+      </h1>
 
-        <p className="text-gray-500 mt-2">Manage customer medicine orders.</p>
-      </div>
+      {orders.length === 0 ? (
+        <div className="rounded-xl bg-white p-10 text-center shadow">
+          <h2 className="text-2xl font-bold text-gray-500">No Orders Found</h2>
+        </div>
+      ) : (
+        orders.map((order, orderIndex) => (
+          <div
+            key={order._id}
+            className="mb-10 rounded-xl border bg-white shadow-lg"
+          >
+            {/* Header */}
 
-      <div className="overflow-x-auto bg-white rounded-xl shadow">
-        <table className="min-w-full">
-          <thead className="bg-blue-600 text-white">
-            <tr>
-              <th className="px-4 py-3">#</th>
+            <div className="flex flex-wrap items-center justify-between border-b bg-blue-50 p-6">
+              <div>
+                <h2 className="text-xl font-bold text-blue-700">
+                  Order #{orderIndex + 1}
+                </h2>
 
-              <th className="px-4 py-3">Customer</th>
+                <p className="text-gray-600">
+                  <strong>ID :</strong> {order._id}
+                </p>
 
-              <th className="px-4 py-3">Medicine</th>
+                <p className="text-gray-600">
+                  <strong>Date :</strong>{" "}
+                  {new Date(order.orderDate).toLocaleString()}
+                </p>
+              </div>
 
-              <th className="px-4 py-3">Qty</th>
+              <div className="text-right">
+                <h2 className="text-3xl font-bold text-green-600">
+                  ৳ {order.grandTotal}
+                </h2>
 
-              <th className="px-4 py-3">Unit Price</th>
+                <p className="text-gray-500">
+                  Total {order.items?.length || 0} Medicine
+                </p>
+              </div>
+            </div>
 
-              <th className="px-4 py-3">Total</th>
+            {/* Customer */}
 
-              <th className="px-4 py-3">Status</th>
+            <div className="grid gap-4 border-b p-6 md:grid-cols-2">
+              <div>
+                <h3 className="mb-2 text-lg font-bold">Customer Info</h3>
 
-              <th className="px-4 py-3">Action</th>
-            </tr>
-          </thead>
+                <p>
+                  <strong>Name :</strong> {order.customerName}
+                </p>
 
-          <tbody>
-            {orders.map((order, index) => (
-              <tr key={order._id} className="border-b hover:bg-gray-50">
-                <td className="px-4 py-3">{index + 1}</td>
+                <p>
+                  <strong>Email :</strong> {order.customerEmail}
+                </p>
 
-                <td className="px-4 py-3">
-                  <h3 className="font-semibold">{order.customerName}</h3>
+                <p>
+                  <strong>Phone :</strong> {order.phone}
+                </p>
 
-                  <p className="text-sm text-gray-500">{order.customerEmail}</p>
-                </td>
+                <p>
+                  <strong>Address :</strong> {order.address}
+                </p>
 
-                <td className="px-4 py-3">{order.medicineName}</td>
+                <p>
+                  <strong>Note :</strong> {order.note || "N/A"}
+                </p>
+              </div>
 
-                <td className="px-4 py-3">{order.quantity}</td>
+              <div>
+                <h3 className="mb-2 text-lg font-bold">Status</h3>
 
-                <td className="px-4 py-3">৳ {order.unitPrice}</td>
+                <div className="space-y-4">
+                  <div>
+                    <label className="font-semibold">Payment Status</label>
 
-                <td className="px-4 py-3 font-bold text-green-600">
-                  ৳ {order.totalPrice}
-                </td>
+                    <select
+                      value={order.paymentStatus}
+                      onChange={(e) => updatePayment(order._id, e.target.value)}
+                      className="mt-2 w-full rounded border p-2"
+                    >
+                      <option value="Unpaid">Unpaid</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </div>
 
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-3 py-1 rounded-full text-white text-sm
+                  <div>
+                    <label className="font-semibold">Order Status</label>
 
-                    ${
-                      order.status === "Pending"
-                        ? "bg-yellow-500"
-                        : order.status === "Processing"
-                          ? "bg-blue-600"
-                          : "bg-green-600"
-                    }
+                    <select
+                      value={order.orderStatus}
+                      onChange={(e) => updateStatus(order._id, e.target.value)}
+                      className="mt-2 w-full rounded border p-2"
+                    >
+                      <option value="Pending">Pending</option>
 
-                    `}
-                  >
-                    {order.status}
-                  </span>
-                </td>
+                      <option value="Processing">Processing</option>
 
-                <td className="px-4 py-3">
-                  <select
-                    value={order.status}
-                    onChange={(e) => updateStatus(order._id, e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                  >
-                    <option>Pending</option>
+                      <option value="Completed">Completed</option>
 
-                    <option>Processing</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                    <option>Completed</option>
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            {/* Medicines */}
+
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th>#</th>
+                    <th>Medicine</th>
+                    <th>Company</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {(order.items || []).map((item, index) => (
+                    <tr key={index}>
+                      <td>{index + 1}</td>
+
+                      <td>{item.medicineName}</td>
+
+                      <td>{item.company}</td>
+
+                      <td>{item.quantity}</td>
+
+                      <td>৳ {item.unitPrice}</td>
+
+                      <td className="font-bold text-green-600">
+                        ৳ {item.totalPrice}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 p-6">
+              <div>
+                <span
+                  className={`rounded-full px-4 py-2 text-white ${
+                    order.orderStatus === "Pending"
+                      ? "bg-yellow-500"
+                      : order.orderStatus === "Processing"
+                        ? "bg-blue-600"
+                        : order.orderStatus === "Completed"
+                          ? "bg-green-600"
+                          : "bg-red-600"
+                  }`}
+                >
+                  {order.orderStatus}
+                </span>
+              </div>
+
+              <div>
+                <span
+                  className={`rounded-full px-4 py-2 text-white ${
+                    order.paymentStatus === "Paid"
+                      ? "bg-green-600"
+                      : "bg-red-600"
+                  }`}
+                >
+                  {order.paymentStatus}
+                </span>
+              </div>
+              <td>
+                <Link
+                  to={`/dashboard/invoice/${order._id}`}
+                  className="rounded bg-indigo-600 px-4 py-2 text-white"
+                >
+                  View Invoice
+                </Link>
+              </td>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }

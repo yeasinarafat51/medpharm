@@ -142,6 +142,7 @@ function Dashboard() {
             Users
           </NavLink>
           {/* <NavLink to="/dashboard/my-invoices">My Invoices</NavLink> */}
+          <NavLink to="/dashboard/my-invoices">My Invoices</NavLink>
           <NavLink
             to="/dashboard/sales-report"
             className={menuClass}

@@ -79,8 +79,19 @@ function Checkout() {
           medicineId: item._id,
           medicineName: item.medicineName,
           company: item.company,
+
           quantity: Number(item.quantity),
+
+          // MRP
+          mrp: Number(item.mrpePrice),
+
+          // Discount %
+          discount: Number(item.bikriPercent),
+
+          // Selling Price
           unitPrice: Number(item.sellingPrice),
+
+          // Total
           totalPrice: Number(item.sellingPrice) * Number(item.quantity),
         })),
 
@@ -158,12 +169,36 @@ function Checkout() {
           <h2 className="mb-6 text-2xl font-bold">Order Summary</h2>
 
           {cart.map((item) => (
-            <div key={item._id} className="mb-3 flex justify-between">
-              <span>
-                {item.medicineName} × {item.quantity}
-              </span>
+            <div
+              key={item._id}
+              className="mb-4 rounded-lg border p-3 shadow-sm"
+            >
+              <h3 className="font-bold text-lg">{item.medicineName}</h3>
 
-              <span>৳ {(item.quantity * item.sellingPrice).toFixed(2)}</span>
+              <div className="mt-2 flex justify-between">
+                <span>MRP</span>
+                <span>৳ {item.mrpePrice}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Discount</span>
+                <span>{item.bikriPercent}%</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Selling Price</span>
+                <span>৳ {item.sellingPrice}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Quantity</span>
+                <span>{item.quantity}</span>
+              </div>
+
+              <div className="flex justify-between font-bold text-green-600">
+                <span>Total</span>
+                <span>৳ {(item.quantity * item.sellingPrice).toFixed(2)}</span>
+              </div>
             </div>
           ))}
 

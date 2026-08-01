@@ -24,7 +24,7 @@ function MyOrders() {
         console.log(res.data);
 
         if (res.data.success) {
-          setOrders(res.data.orders);
+          setOrders(res.data.orders || []);
         } else {
           setOrders([]);
         }
@@ -68,7 +68,7 @@ function MyOrders() {
               <div>
                 <h2 className="text-xl font-bold text-blue-700">Order ID</h2>
 
-                <p className="text-gray-500 break-all">{order._id}</p>
+                <p className="break-all text-gray-500">{order._id}</p>
 
                 <p className="mt-2 text-sm text-gray-500">
                   {new Date(order.orderDate).toLocaleString()}
@@ -76,11 +76,11 @@ function MyOrders() {
               </div>
 
               <div className="text-right">
-                <h2 className="text-2xl font-bold text-green-600">
-                  ৳ {order.grandTotal}
+                <h2 className="text-3xl font-bold text-green-600">
+                  ৳ {Number(order.grandTotal).toFixed(2)}
                 </h2>
 
-                <div className="mt-3 space-y-2">
+                <div className="mt-4 space-y-2">
                   <span
                     className={`inline-block rounded-full px-4 py-1 text-white ${
                       order.orderStatus === "Pending"
@@ -113,7 +113,7 @@ function MyOrders() {
             {/* Medicine List */}
 
             <div className="divide-y">
-              {order.items.map((item, index) => (
+              {(order.items || []).map((item, index) => (
                 <div
                   key={index}
                   className="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between"
@@ -135,7 +135,7 @@ function MyOrders() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-6 text-center">
+                  <div className="grid grid-cols-3 gap-8 text-center">
                     <div>
                       <p className="text-gray-500">Quantity</p>
 
@@ -145,14 +145,16 @@ function MyOrders() {
                     <div>
                       <p className="text-gray-500">Unit Price</p>
 
-                      <h3 className="font-bold">৳ {item.unitPrice}</h3>
+                      <h3 className="font-bold">
+                        ৳ {Number(item.unitPrice).toFixed(2)}
+                      </h3>
                     </div>
 
                     <div>
                       <p className="text-gray-500">Total</p>
 
                       <h3 className="font-bold text-green-600">
-                        ৳ {item.totalPrice || item.total}
+                        ৳ {Number(item.totalPrice).toFixed(2)}
                       </h3>
                     </div>
                   </div>
@@ -173,12 +175,18 @@ function MyOrders() {
                 </p>
 
                 <p>
-                  <strong>Phone :</strong> {order.phone || "N/A"}
+                  <strong>Phone :</strong> {order.phone}
                 </p>
 
                 <p>
-                  <strong>Address :</strong> {order.address || "N/A"}
+                  <strong>Address :</strong> {order.address}
                 </p>
+
+                {order.note && (
+                  <p>
+                    <strong>Note :</strong> {order.note}
+                  </p>
+                )}
               </div>
 
               {order.invoiceNo ? (
