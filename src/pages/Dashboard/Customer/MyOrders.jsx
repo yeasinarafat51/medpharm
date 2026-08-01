@@ -189,7 +189,7 @@ function MyOrders() {
                 )}
               </div>
 
-              {order.invoiceNo ? (
+              {/* {order.invoiceNo ? (
                 <Link
                   to={`/invoice/${order.invoiceNo}`}
                   className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
@@ -203,7 +203,7 @@ function MyOrders() {
                 >
                   Invoice Not Available
                 </button>
-              )}
+              )} */}
             </div>
           </div>
         ))
