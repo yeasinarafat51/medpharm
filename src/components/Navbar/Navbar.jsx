@@ -160,7 +160,24 @@ function Navbar() {
                 My Orders
               </NavLink>
             )}
+            {user && (
+              <NavLink
+                to="/cart"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center justify-between border-b px-6 py-4"
+              >
+                <div className="flex items-center gap-2">
+                  <FaShoppingCart />
+                  <span>Cart</span>
+                </div>
 
+                {cart.length > 0 && (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white">
+                    {cart.length}
+                  </span>
+                )}
+              </NavLink>
+            )}
             {(role === "admin" || role === "super-admin") && (
               <NavLink
                 to="/dashboard"
