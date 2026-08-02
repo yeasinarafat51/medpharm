@@ -33,21 +33,26 @@ function CartProvider({ children }) {
   // Add To Cart
   // ==========================
   const addToCart = (medicine) => {
-    setCart((prevCart) => {
-      const existing = prevCart.find((item) => item._id === medicine._id);
+    setCart((prev) => {
+      const exist = prev.find((item) => item._id === medicine._id);
 
-      if (existing) {
-        return prevCart.map((item) =>
+      if (exist) {
+        return prev.map((item) =>
           item._id === medicine._id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? {
+                ...item,
+                quantity: Math.min(
+                  item.quantity + medicine.quantity,
+                  item.stock,
+                ),
+              }
             : item,
         );
       }
 
-      return [...prevCart, { ...medicine, quantity: 1 }];
+      return [...prev, medicine];
     });
   };
-
   // ==========================
   // Remove
   // ==========================

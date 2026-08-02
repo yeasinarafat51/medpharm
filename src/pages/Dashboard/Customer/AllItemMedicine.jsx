@@ -3,32 +3,25 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import useAuth from "../../../hooks/useAuth";
 import useCart from "../../../hooks/useCart";
-// import Swal from "sweetalert2";
 
 function AllItemMedicine() {
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const [medicines, setMedicines] = useState([]);
 
+  const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-
   const [page, setPage] = useState(1);
-
   const [totalPages, setTotalPages] = useState(1);
 
-  const [selectedMedicine, setSelectedMedicine] = useState(null);
-
-  const [showModal, setShowModal] = useState(false);
-
-  const [quantity, setQuantity] = useState(1);
+  const [quantities, setQuantities] = useState({});
 
   const limit = 8;
 
-  // ==========================
+  // ===============================
   // Load Medicines
-  // ==========================
+  // ===============================
 
   const loadMedicine = async () => {
     try {
@@ -39,14 +32,13 @@ function AllItemMedicine() {
       );
 
       setMedicines(res.data.medicines);
-
       setTotalPages(res.data.totalPages);
     } catch (error) {
       console.log(error);
 
       Swal.fire({
         icon: "error",
-        title: "Failed to load medicines",
+        title: "Failed to Load Medicines",
       });
     } finally {
       setLoading(false);
@@ -57,135 +49,70 @@ function AllItemMedicine() {
     loadMedicine();
   }, [search, page]);
 
-  // ==========================
-  // Open Modal
-  // ==========================
-
-  const openOrderModal = (medicine) => {
-    setSelectedMedicine(medicine);
-
-    setQuantity(1);
-
-    setShowModal(true);
-  };
-
-  // ==========================
-  // Close Modal
-  // ==========================
-
-  const closeModal = () => {
-    setShowModal(false);
-
-    setSelectedMedicine(null);
-
-    setQuantity(1);
-  };
-
-  // ==========================
+  // ===============================
   // Quantity
-  // ==========================
+  // ===============================
 
-  const increase = () => {
-    setQuantity(quantity + 1);
-  };
+  const increaseQty = (medicine) => {
+    setQuantities((prev) => {
+      const current = prev[medicine._id] || 1;
 
-  const decrease = () => {
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
-  };
+      if (current >= medicine.stock) return prev;
 
-  // ==========================
-  // Total Price
-  // ==========================
-
-  const totalPrice = selectedMedicine
-    ? quantity * selectedMedicine.sellingPrice
-    : 0; // ==========================
-  // Place Order
-  // ==========================
-
-  const handleOrder = async () => {
-    try {
-      if (!user) {
-        Swal.fire({
-          icon: "warning",
-          title: "Please Login First",
-        });
-
-        return;
-      }
-
-      if (quantity > Number(selectedMedicine.stock)) {
-        Swal.fire({
-          icon: "error",
-          title: "Not enough stock",
-        });
-
-        return;
-      }
-
-      const order = {
-        customerName: user.displayName || "Customer",
-
-        customerEmail: user.email,
-
-        uid: user.uid,
-
-        medicineId: selectedMedicine._id,
-
-        medicineName: selectedMedicine.medicineName,
-
-        company: selectedMedicine.company,
-
-        image: selectedMedicine.image,
-
-        quantity: Number(quantity),
-
-        unitPrice: Number(selectedMedicine.sellingPrice),
-
-        totalPrice: Number(quantity) * Number(selectedMedicine.sellingPrice),
+      return {
+        ...prev,
+        [medicine._id]: current + 1,
       };
+    });
+  };
 
-      const res = await axios.post(
-        "https://medpharm-server-sgs6.vercel.app/api/orders",
-        order,
-      );
+  const decreaseQty = (medicine) => {
+    setQuantities((prev) => {
+      const current = prev[medicine._id] || 1;
 
-      if (res.data.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Order Placed Successfully",
-          timer: 1800,
-          showConfirmButton: false,
-        });
+      if (current <= 1) return prev;
 
-        closeModal();
-      }
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Order Failed",
-        text: error.message,
-      });
-    }
+      return {
+        ...prev,
+        [medicine._id]: current - 1,
+      };
+    });
+  };
+
+  // ===============================
+  // Add To Cart
+  // ===============================
+
+  const handleAddToCart = (medicine) => {
+    const qty = quantities[medicine._id] || 1;
+
+    addToCart({
+      ...medicine,
+      quantity: qty,
+    });
+
+    Swal.fire({
+      icon: "success",
+      title: "Added To Cart",
+      text: `${qty} item added successfully`,
+      timer: 1200,
+      showConfirmButton: false,
+    });
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6">
       {/* Header */}
 
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-blue-700">All Medicines</h1>
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">All Medicines</h1>
 
-        <p className="mt-2 text-gray-500">
-          Browse medicines and place your order.
-        </p>
-      </div>
+          <p className="text-gray-500">
+            Browse medicines and add them to your cart.
+          </p>
+        </div>
 
-      {/* Search */}
-
-      <div className="mb-8">
         <input
           type="text"
           placeholder="Search medicine..."
@@ -194,92 +121,224 @@ function AllItemMedicine() {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="w-full rounded-xl border border-gray-300 px-5 py-3 outline-none focus:border-blue-500"
+          className="w-full rounded-xl border px-4 py-3 outline-none focus:border-blue-600 md:w-96"
         />
       </div>
 
-      {/* Loading */}
-
       {loading ? (
-        <div className="py-20 text-center text-xl font-semibold text-blue-600">
-          Loading...
+        <div className="flex h-72 items-center justify-center">
+          <span className="loading loading-spinner loading-lg text-primary"></span>
         </div>
       ) : (
         <>
           {/* Medicine Grid */}
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
+            {" "}
             {medicines.map((medicine) => (
               <div
                 key={medicine._id}
-                className="overflow-hidden rounded-2xl border bg-white shadow transition hover:-translate-y-1 hover:shadow-xl"
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
-                <img
-                  src={
-                    medicine.image ||
-                    "https://placehold.co/600x400?text=Medicine"
-                  }
-                  alt={medicine.medicineName}
-                  className="h-48 w-full object-cover"
-                />
+                {/* Mobile Layout */}
+                <div className="flex p-3 lg:hidden">
+                  {/* Image */}
+                  <img
+                    src={
+                      medicine.image ||
+                      "https://placehold.co/300x300?text=Medicine"
+                    }
+                    alt={medicine.medicineName}
+                    className="h-24 w-24 rounded-xl object-cover"
+                  />
 
-                <div className="p-5">
-                  <h2 className="text-xl font-bold">{medicine.medicineName}</h2>
+                  {/* Content */}
+                  <div className="ml-3 flex flex-1 flex-col justify-between">
+                    <div className="flex  gap-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <h2 className="line-clamp-1 flex-1 text-base font-bold text-gray-800">
+                          {medicine.medicineName}
+                        </h2>
 
-                  <p className="mt-1 text-sm text-gray-500">
-                    {medicine.company}
-                  </p>
+                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 whitespace-nowrap">
+                          {medicine.category}
+                        </span>
+                      </div>
 
-                  <p className="mt-3 rounded bg-blue-100 px-3 py-1 text-center text-blue-700">
-                    {medicine.category}
-                  </p>
+                      <p className="text-sm text-gray-500">
+                        {medicine.company}
+                      </p>
+                    </div>
 
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-2xl font-bold text-green-600">
-                      ৳ {medicine.sellingPrice}
+                    <div className="mt-3 space-y-2 rounded-lg bg-gray-50 p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">
+                          Selling Price
+                        </span>
+
+                        <span className="text-xl font-bold text-green-600">
+                          ৳ {medicine.sellingPrice}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-600">
+                          MRP ৳ {medicine.mrpePrice}
+                        </span>
+
+                        <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-600">
+                          {medicine.bikriPercent}% OFF
+                        </span>
+
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            medicine.stock > 10
+                              ? "bg-green-100 text-green-700"
+                              : medicine.stock > 0
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          Stock: {medicine.stock}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => decreaseQty(medicine)}
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white"
+                        >
+                          -
+                        </button>
+
+                        <span className="w-6 text-center font-bold">
+                          {quantities[medicine._id] || 1}
+                        </span>
+
+                        <button
+                          onClick={() => increaseQty(medicine)}
+                          disabled={
+                            (quantities[medicine._id] || 1) >= medicine.stock
+                          }
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-white disabled:bg-gray-400"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => handleAddToCart(medicine)}
+                        className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop Layout */}
+                <div className="hidden lg:block">
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={
+                        medicine.image ||
+                        "https://placehold.co/600x400?text=Medicine"
+                      }
+                      alt={medicine.medicineName}
+                      className="h-56 w-full object-cover transition duration-500 hover:scale-110"
+                    />
+
+                    <span className="absolute left-3 top-3 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
+                      {medicine.category}
                     </span>
 
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-                      Persent {medicine.bikriPercent}
-                    </span>
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-                      MRP {medicine.mrpePrice}
+                    <span
+                      className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold text-white ${
+                        medicine.stock > 10
+                          ? "bg-green-600"
+                          : medicine.stock > 0
+                            ? "bg-yellow-500"
+                            : "bg-red-600"
+                      }`}
+                    >
+                      Stock {medicine.stock}
                     </span>
                   </div>
 
-                  {/* <button
-                    onClick={() => openOrderModal(medicine)}
-                    className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
-                  >
-                    Order Now
-                  </button> */}
-                  <button
-                    onClick={() => {
-                      addToCart(medicine);
+                  <div className="p-5">
+                    <h2 className="line-clamp-1 text-xl font-bold">
+                      {medicine.medicineName}
+                    </h2>
 
-                      Swal.fire({
-                        icon: "success",
-                        title: "Added To Cart",
-                        timer: 1200,
-                        showConfirmButton: false,
-                      });
-                    }}
-                    className="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-                  >
-                    Add To Cart
-                  </button>
+                    <p className="text-gray-500">{medicine.company}</p>
+
+                    <div className="mt-4 rounded-xl bg-gray-50 p-3">
+                      <div className="flex justify-between">
+                        <span>MRP</span>
+
+                        <span className="line-through text-gray-400">
+                          ৳ {medicine.mrpePrice}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 flex justify-between">
+                        <span>Discount</span>
+
+                        <span className="rounded-full bg-red-100 px-2 py-1 text-red-600">
+                          {medicine.bikriPercent}% OFF
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex justify-between">
+                        <span>Selling Price</span>
+
+                        <span className="text-2xl font-bold text-green-600">
+                          ৳ {medicine.sellingPrice}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-center gap-4">
+                      <button
+                        onClick={() => decreaseQty(medicine)}
+                        className="h-10 w-10 rounded-full bg-red-500 text-xl text-white"
+                      >
+                        -
+                      </button>
+
+                      <span className="w-10 text-center text-xl font-bold">
+                        {quantities[medicine._id] || 1}
+                      </span>
+
+                      <button
+                        onClick={() => increaseQty(medicine)}
+                        disabled={
+                          (quantities[medicine._id] || 1) >= medicine.stock
+                        }
+                        className="h-10 w-10 rounded-full bg-green-600 text-xl text-white disabled:bg-gray-400"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddToCart(medicine)}
+                      className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
+                    >
+                      🛒 Add To Cart
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
-          </div>
-
+          </div>{" "}
           {/* Pagination */}
-
-          <div className="mt-10 flex justify-center gap-3">
+          <div className="mt-10 flex items-center justify-center gap-3">
             <button
               disabled={page === 1}
               onClick={() => setPage(page - 1)}
-              className="rounded-lg bg-gray-200 px-5 py-2 disabled:opacity-50"
+              className="rounded-lg bg-gray-200 px-5 py-2 font-semibold transition hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
@@ -291,85 +350,12 @@ function AllItemMedicine() {
             <button
               disabled={page === totalPages}
               onClick={() => setPage(page + 1)}
-              className="rounded-lg bg-blue-600 px-5 py-2 text-white disabled:opacity-50"
+              className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
           </div>
         </>
-      )}
-
-      {/* Order Modal */}
-
-      {showModal && selectedMedicine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="mb-5 text-2xl font-bold">Place Order</h2>
-
-            <img
-              src={
-                selectedMedicine.image ||
-                "https://placehold.co/300x200?text=Medicine"
-              }
-              alt=""
-              className="mb-4 h-48 w-full rounded-xl object-cover"
-            />
-
-            <h3 className="text-xl font-bold">
-              {selectedMedicine.medicineName}
-            </h3>
-
-            <p className="text-gray-500">{selectedMedicine.company}</p>
-
-            <div className="mt-5">
-              <p className="font-semibold">
-                Unit Price : ৳ {selectedMedicine.sellingPrice}
-              </p>
-
-              <div className="mt-4 flex items-center gap-4">
-                <button
-                  onClick={decrease}
-                  className="h-10 w-10 rounded bg-red-500 text-white"
-                >
-                  -
-                </button>
-
-                <span className="text-xl font-bold">{quantity}</span>
-
-                <button
-                  onClick={increase}
-                  className="h-10 w-10 rounded bg-green-600 text-white"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="mt-6 rounded-xl bg-green-100 p-4 text-center">
-                <p>Total Price</p>
-
-                <h2 className="text-3xl font-bold text-green-700">
-                  ৳ {totalPrice}
-                </h2>
-              </div>
-
-              <div className="mt-6 flex gap-3">
-                <button
-                  onClick={closeModal}
-                  className="flex-1 rounded-xl bg-gray-300 py-3 font-semibold"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleOrder}
-                  className="flex-1 rounded-xl bg-blue-600 py-3 font-semibold text-white"
-                >
-                  Confirm Order
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
