@@ -47,7 +47,7 @@ function Dashboard() {
 
   const menuClass = ({ isActive }) =>
     `flex items-center gap-3 px-6 py-4 transition-all duration-200 ${
-      isActive ? "bg-white text-blue-700 font-semibold" : "hover:bg-blue-800"
+      isActive ? "bg-white text-blue-700 font-semibold" : "hover:bg-cyan-800"
     }`;
 
   return (
@@ -65,8 +65,8 @@ function Dashboard() {
           fixed lg:static top-0 left-0 z-40
           h-screen w-72
           bg-gradient-to-b
-          from-blue-700
-          to-blue-900
+          from-amber-700
+          to-amber-900
           text-white
           shadow-xl
           transform
@@ -79,7 +79,10 @@ function Dashboard() {
         {/* Sidebar Header */}
 
         <div className="border-b border-blue-500 py-8 text-center relative">
-          <h1 className="text-3xl font-bold">💊 MedPharm</h1>
+          <h1 className="text-3xl font-bold">
+            💊 Nova
+            <span className="text-3xl font-bold text-cyan-700">Care</span>
+          </h1>
 
           <p className="mt-2 text-blue-200">Pharmacy Management</p>
 

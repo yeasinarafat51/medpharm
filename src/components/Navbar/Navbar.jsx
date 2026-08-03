@@ -7,7 +7,7 @@ import useAuth from "../../hooks/useAuth";
 import { FaShoppingCart } from "react-icons/fa";
 import useCart from "../../hooks/useCart";
 // import useAuth from "../hooks/useAuth";
-
+import logo from "../../imges/novacare.jpg";
 function Navbar() {
   const { user, logoutUser } = useAuth();
   const { cart } = useCart();
@@ -63,14 +63,28 @@ function Navbar() {
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-5 py-4 flex justify-between items-center">
-        {/* Logo */}
+        {/* Logo */}{" "}
+        <NavLink to="/" className="flex items-center gap-3">
+          <img
+            src={logo}
+            alt="Radiance"
+            className="w-64 h-16  object-cover  "
+          />
 
-        <Link to="/" className="text-3xl font-bold text-blue-600">
+          {/* <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Radiance
+              </h2>
+
+              <p className="text-xs tracking-[3px] uppercase text-amber-600">
+                Leather Industry
+              </p>
+            </div> */}
+        </NavLink>
+        {/* <Link to="/" className="text-3xl font-bold text-blue-600">
           MedPharm
-        </Link>
-
+        </Link> */}
         {/* Desktop Menu */}
-
         <nav className="hidden md:flex items-center gap-6">
           <NavLink to="/" className={navLinkClass}>
             All Medicines
@@ -127,9 +141,7 @@ function Navbar() {
             </>
           )}
         </nav>
-
         {/* Mobile Menu Button */}
-
         <button
           className="md:hidden text-2xl"
           onClick={() => setMenuOpen(!menuOpen)}
