@@ -153,20 +153,22 @@ function AllItemMedicine() {
 
                   {/* Content */}
                   <div className="ml-3 flex flex-1 flex-col justify-between">
-                    <div className="flex  gap-4">
-                      <div className="flex items-center justify-between gap-2">
+                    <div className="  gap-4">
+                      <div className=" items-center justify-between gap-2">
                         <h2 className="line-clamp-1 flex-1 text-base font-bold text-gray-800">
                           {medicine.medicineName}
                         </h2>
 
-                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 whitespace-nowrap">
-                          {medicine.category}
-                        </span>
-                      </div>
+                        <div className="flex">
+                          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 whitespace-nowrap">
+                            {medicine.category}
+                          </span>
+                        </div>
 
-                      <p className="text-sm text-gray-500">
-                        {medicine.company}
-                      </p>
+                        <p className="text-sm text-gray-500">
+                          {medicine.company}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="mt-3 space-y-2 rounded-lg bg-gray-50 p-3">
