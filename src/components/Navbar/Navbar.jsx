@@ -125,6 +125,12 @@ function Navbar() {
               <NavLink to="/register" className={navLinkClass}>
                 Register
               </NavLink>
+              <NavLink
+                to="https://web2apkpro.com/public_download.php?project_id=20811&token=6e0ada7cc4"
+                className={navLinkClass}
+              >
+                Download App
+              </NavLink>
             </>
           ) : (
             <>
@@ -216,6 +222,12 @@ function Navbar() {
                   className="px-6 py-4 border-b"
                 >
                   Register
+                </NavLink>
+                <NavLink
+                  to="https://web2apkpro.com/public_download.php?project_id=20811&token=6e0ada7cc4"
+                  className={navLinkClass}
+                >
+                  Download App
                 </NavLink>
               </>
             ) : (
