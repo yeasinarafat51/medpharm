@@ -3,6 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import useAuth from "../../../hooks/useAuth";
 import useCart from "../../../hooks/useCart";
+import medisin from "../../../imges/medicine.jpg";
 
 function AllItemMedicine() {
   const { user } = useAuth();
@@ -143,10 +144,7 @@ function AllItemMedicine() {
                 <div className="flex p-3 lg:hidden">
                   {/* Image */}
                   <img
-                    src={
-                      medicine.image ||
-                      "https://placehold.co/300x300?text=Medicine"
-                    }
+                    src={medicine.image || medisin}
                     alt={medicine.medicineName}
                     className="h-24 w-24 rounded-xl object-cover"
                   />
@@ -243,10 +241,7 @@ function AllItemMedicine() {
                 <div className="hidden lg:block">
                   <div className="relative overflow-hidden">
                     <img
-                      src={
-                        medicine.image ||
-                        "https://placehold.co/600x400?text=Medicine"
-                      }
+                      src={medicine.image || medisin}
                       alt={medicine.medicineName}
                       className="h-56 w-full object-cover transition duration-500 hover:scale-110"
                     />
