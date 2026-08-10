@@ -20,7 +20,9 @@ function InvoiceDetails() {
 
   const loadOrder = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/orders/${id}`);
+      const res = await axios.get(
+        `https://medpharm-server-sgs6.vercel.app/api/orders/${id}`,
+      );
 
       if (res.data.success) {
         setOrder(res.data.order);
