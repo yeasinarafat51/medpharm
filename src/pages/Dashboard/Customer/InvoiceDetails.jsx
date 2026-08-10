@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+
+const API_URL = "https://medpharm-server-sgs6.vercel.app";
 
 function InvoiceDetails() {
   const { id } = useParams();
@@ -10,240 +11,619 @@ function InvoiceDetails() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ==========================================
-  // LOAD ORDER
-  // ==========================================
+  // ============================================
+  // LOAD INVOICE
+  // ============================================
 
   useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
     loadOrder();
   }, [id]);
 
   const loadOrder = async () => {
     try {
-      const res = await axios.get(
-        `https://medpharm-server-sgs6.vercel.app/api/orders/${id}`,
-      );
+      setLoading(true);
 
-      if (res.data.success) {
+      const res = await axios.get(`${API_URL}/api/orders/${id}`);
+
+      console.log("Invoice Response:", res.data);
+
+      if (res.data?.success && res.data?.order) {
         setOrder(res.data.order);
+      } else if (res.data?.order) {
+        setOrder(res.data.order);
+      } else {
+        setOrder(null);
       }
     } catch (error) {
-      console.log("Invoice Load Error:", error);
+      console.error("Invoice Load Error:", error);
+      setOrder(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
+  // ============================================
+  // PRINT
+  // ============================================
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // ============================================
   // DOWNLOAD PDF
-  // ==========================================
+  // ============================================
 
-  const downloadPDF = async () => {
+  const downloadPDF = () => {
+    if (!order) return;
+
     try {
-      const input = document.getElementById("invoice");
-
-      if (!input) {
-        return;
-      }
-
-      const canvas = await html2canvas(input, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-
-      // 80mm width
-      const pdfWidth = 80;
-
-      // Height according to actual content
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const items = order.items || [];
 
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [pdfWidth, pdfHeight],
+        format: [80, 220],
       });
 
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      const pageWidth = 80;
+      const margin = 5;
+      const contentWidth = pageWidth - margin * 2;
 
-      pdf.save(`Invoice-${order.invoiceNo || order._id}.pdf`);
+      let y = 7;
+
+      // ============================================
+      // BASIC DATA
+      // ============================================
+
+      const invoiceNumber =
+        order.invoiceNo ||
+        order.orderNo ||
+        `INV-${String(order._id || "").slice(-6)}`;
+
+      const orderDate = order.orderDate
+        ? new Date(order.orderDate)
+        : new Date();
+
+      const customerName = order.customerName || "Walk-in Customer";
+
+      const customerPhone = order.phone || "N/A";
+
+      const customerAddress = order.address || "N/A";
+
+      const paymentMethod =
+        order.paymentMethod || order.paymentStatus || "CASH";
+
+      // ============================================
+      // TOTAL CALCULATION
+      // ============================================
+
+      const subtotal = items.reduce((sum, item) => {
+        const unitPrice =
+          Number(item.unitPrice) ||
+          Number(item.sellingPrice) ||
+          Number(item.price) ||
+          0;
+
+        const quantity = Number(item.quantity) || 0;
+
+        const total = Number(item.totalPrice) || unitPrice * quantity;
+
+        return sum + total;
+      }, 0);
+
+      const discount = Number(order.discount || 0);
+
+      const grandTotal = Number(order.grandTotal) || subtotal - discount;
+
+      const totalPaid =
+        Number(order.totalPaid) || Number(order.paidAmount) || grandTotal;
+
+      const dueAmount = Math.max(grandTotal - totalPaid, 0);
+
+      // ============================================
+      // FONT
+      // ============================================
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(0, 0, 0);
+
+      // ============================================
+      // HEADER
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+
+      pdf.text("NOVACARE", pageWidth / 2, y, {
+        align: "center",
+      });
+
+      y += 5;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7);
+
+      pdf.text("Pharmacy Management System", pageWidth / 2, y, {
+        align: "center",
+      });
+
+      y += 4;
+
+      pdf.text("WhatsApp: 01620316751", pageWidth / 2, y, {
+        align: "center",
+      });
+
+      y += 5;
+
+      // ============================================
+      // LINE
+      // ============================================
+
+      pdf.setLineWidth(0.2);
+
+      pdf.line(margin, y, pageWidth - margin, y);
+
+      y += 5;
+
+      // ============================================
+      // INVOICE TITLE
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+
+      pdf.text("RETAIL INVOICE", pageWidth / 2, y, {
+        align: "center",
+      });
+
+      y += 6;
+
+      // ============================================
+      // ORDER
+      // ============================================
+
+      pdf.setFontSize(7);
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("ORDER:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text(invoiceNumber, margin + 13, y);
+
+      y += 4;
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("DATE:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text(orderDate.toLocaleDateString(), margin + 13, y);
+
+      y += 4;
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("TIME:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text(
+        orderDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        margin + 13,
+        y,
+      );
+
+      y += 5;
+
+      // ============================================
+      // CUSTOMER
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("CUSTOMER:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      const customerText = pdf.splitTextToSize(customerName, contentWidth - 18);
+
+      pdf.text(customerText, margin + 18, y);
+
+      y += 4 * customerText.length;
+
+      // ============================================
+      // PHONE
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("PHONE:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text(customerPhone, margin + 14, y);
+
+      y += 4;
+
+      // ============================================
+      // ADDRESS
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("ADDRESS:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      const addressText = pdf.splitTextToSize(
+        customerAddress,
+        contentWidth - 18,
+      );
+
+      pdf.text(addressText, margin + 18, y);
+
+      y += 4 * addressText.length;
+
+      y += 2;
+
+      // ============================================
+      // LINE
+      // ============================================
+
+      pdf.line(margin, y, pageWidth - margin, y);
+
+      y += 5;
+
+      // ============================================
+      // TABLE HEADER
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7);
+
+      pdf.text("SL", margin, y);
+
+      pdf.text("ITEM", margin + 8, y);
+
+      pdf.text("PRICE", 49, y, {
+        align: "right",
+      });
+
+      pdf.text("QTY", 60, y, {
+        align: "right",
+      });
+
+      pdf.text("TOTAL", 75, y, {
+        align: "right",
+      });
+
+      y += 3;
+
+      pdf.line(margin, y, pageWidth - margin, y);
+
+      y += 4;
+
+      // ============================================
+      // MEDICINES
+      // ============================================
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7);
+
+      items.forEach((item, index) => {
+        const unitPrice =
+          Number(item.unitPrice) ||
+          Number(item.sellingPrice) ||
+          Number(item.price) ||
+          0;
+
+        const quantity = Number(item.quantity) || 0;
+
+        const totalPrice = Number(item.totalPrice) || unitPrice * quantity;
+
+        const medicineName = item.medicineName || item.name || "Medicine";
+
+        const itemLines = pdf.splitTextToSize(medicineName, 38);
+
+        pdf.text(String(index + 1), margin, y);
+
+        pdf.text(itemLines, margin + 8, y);
+
+        pdf.text(unitPrice.toFixed(2), 49, y, {
+          align: "right",
+        });
+
+        pdf.text(String(quantity), 60, y, {
+          align: "right",
+        });
+
+        pdf.text(totalPrice.toFixed(2), 75, y, {
+          align: "right",
+        });
+
+        y += Math.max(4, itemLines.length * 3.5);
+
+        // Strength
+
+        if (item.strength) {
+          pdf.setFontSize(6);
+
+          pdf.setTextColor(90, 90, 90);
+
+          pdf.text(String(item.strength), margin + 8, y);
+
+          pdf.setTextColor(0, 0, 0);
+
+          pdf.setFontSize(7);
+
+          y += 3;
+        }
+
+        // Company
+
+        if (item.company) {
+          pdf.setFontSize(6);
+
+          pdf.setTextColor(90, 90, 90);
+
+          pdf.text(String(item.company), margin + 8, y);
+
+          pdf.setTextColor(0, 0, 0);
+
+          pdf.setFontSize(7);
+
+          y += 3;
+        }
+
+        y += 1;
+      });
+
+      // ============================================
+      // TOTAL LINE
+      // ============================================
+
+      pdf.line(margin, y, pageWidth - margin, y);
+
+      y += 5;
+
+      // ============================================
+      // TOTAL
+      // ============================================
+
+      pdf.setFontSize(8);
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text("Total:", 48, y);
+
+      pdf.text(`BDT ${subtotal.toFixed(2)}`, 75, y, {
+        align: "right",
+      });
+
+      y += 4;
+
+      pdf.text("Discount:", 48, y);
+
+      pdf.text(`BDT ${discount.toFixed(2)}`, 75, y, {
+        align: "right",
+      });
+
+      y += 5;
+
+      // ============================================
+      // NET AMOUNT
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+
+      pdf.text("NET AMOUNT:", 42, y);
+
+      pdf.text(`BDT ${grandTotal.toFixed(2)}`, 75, y, {
+        align: "right",
+      });
+
+      y += 5;
+
+      // ============================================
+      // PAID
+      // ============================================
+
+      pdf.setFontSize(8);
+
+      pdf.text("Total Paid:", 48, y);
+
+      pdf.text(`BDT ${totalPaid.toFixed(2)}`, 75, y, {
+        align: "right",
+      });
+
+      y += 4;
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text("Due:", 48, y);
+
+      pdf.text(`BDT ${dueAmount.toFixed(2)}`, 75, y, {
+        align: "right",
+      });
+
+      y += 5;
+
+      // ============================================
+      // PAYMENT
+      // ============================================
+
+      pdf.line(margin, y, pageWidth - margin, y);
+
+      y += 5;
+
+      pdf.setFont("helvetica", "bold");
+
+      pdf.text("Paid By:", margin, y);
+
+      pdf.setFont("helvetica", "normal");
+
+      pdf.text(paymentMethod, margin + 15, y);
+
+      y += 7;
+
+      // ============================================
+      // FOOTER
+      // ============================================
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+
+      pdf.text("Thank you for choosing NovaCare!", pageWidth / 2, y, {
+        align: "center",
+      });
+
+      y += 4;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6);
+
+      pdf.text("Powered and Managed by NovaCare", pageWidth / 2, y, {
+        align: "center",
+      });
+
+      // ============================================
+      // SAVE
+      // ============================================
+
+      pdf.save(`Invoice-${invoiceNumber}.pdf`);
     } catch (error) {
-      console.log("PDF Error:", error);
+      console.error("PDF Error:", error);
     }
   };
 
-  // ==========================================
+  // ============================================
   // LOADING
-  // ==========================================
+  // ============================================
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <h2 className="text-2xl font-bold">Loading Invoice...</h2>
+        <h2 className="text-xl font-bold">Loading Invoice...</h2>
       </div>
     );
   }
 
-  // ==========================================
-  // INVOICE NOT FOUND
-  // ==========================================
+  // ============================================
+  // NOT FOUND
+  // ============================================
 
   if (!order) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <h2 className="text-2xl font-bold text-red-600">Invoice Not Found</h2>
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600">Invoice Not Found</h2>
+
+          <p className="mt-2 text-gray-600">Invoice ID: {id}</p>
+        </div>
       </div>
     );
   }
 
-  // ==========================================
-  // ITEMS
-  // ==========================================
+  // ============================================
+  // DATA
+  // ============================================
 
   const items = order.items || [];
 
-  // ==========================================
-  // SUBTOTAL
-  // ==========================================
+  const invoiceNumber =
+    order.invoiceNo ||
+    order.orderNo ||
+    `INV-${String(order._id || "").slice(-6)}`;
 
-  const subtotal =
-    Number(order.totalAmount) ||
-    items.reduce((sum, item) => {
-      const unitPrice =
-        Number(item.unitPrice) || Number(item.sellingPrice) || 0;
+  const orderDate = order.orderDate ? new Date(order.orderDate) : new Date();
 
-      const quantity = Number(item.quantity) || 0;
+  const subtotal = items.reduce((sum, item) => {
+    const unitPrice =
+      Number(item.unitPrice) ||
+      Number(item.sellingPrice) ||
+      Number(item.price) ||
+      0;
 
-      const totalPrice = Number(item.totalPrice) || unitPrice * quantity;
+    const quantity = Number(item.quantity) || 0;
 
-      return sum + totalPrice;
-    }, 0);
+    const total = Number(item.totalPrice) || unitPrice * quantity;
 
-  // ==========================================
-  // DISCOUNT
-  // ==========================================
+    return sum + total;
+  }, 0);
 
   const discount = Number(order.discount || 0);
 
-  // ==========================================
-  // GRAND TOTAL
-  // ==========================================
-
   const grandTotal = Number(order.grandTotal) || subtotal - discount;
-
-  // ==========================================
-  // TOTAL PAID
-  // ==========================================
 
   const totalPaid =
     Number(order.totalPaid) || Number(order.paidAmount) || grandTotal;
 
-  // ==========================================
-  // CUSTOMER BALANCE
-  // ==========================================
-
-  const customerBalance =
-    Number(order.customerBalance) ||
-    Number(order.dueAmount) ||
-    Math.max(grandTotal - totalPaid, 0);
-
-  // ==========================================
-  // DATE
-  // ==========================================
-
-  const orderDate = order.orderDate ? new Date(order.orderDate) : new Date();
-
-  // ==========================================
-  // INVOICE NUMBER
-  // ==========================================
-
-  const invoiceNumber =
-    order.invoiceNo || order.orderNo || `INV-${order._id.slice(-6)}`;
-
-  // ==========================================
-  // PAYMENT METHOD
-  // ==========================================
+  const dueAmount = Math.max(grandTotal - totalPaid, 0);
 
   const paymentMethod = order.paymentMethod || order.paymentStatus || "CASH";
 
+  // ============================================
+  // SCREEN
+  // ============================================
+
   return (
     <>
-      {/* ==================================================
-          SCREEN
-      ================================================== */}
-
-      <div className="min-h-screen bg-gray-200 px-3 py-6">
-        {/* ==================================================
+      <div className="invoice-page min-h-screen bg-gray-200 px-3 py-6">
+        {/* ========================================
             INVOICE
-        ================================================== */}
+        ======================================== */}
 
         <div
           id="invoice"
-          className="
-            mx-auto
-            w-full
-            max-w-[420px]
-            bg-white
-            px-3
-            py-3
-            text-gray-800
-            shadow-lg
-          "
+          className="invoice mx-auto w-full max-w-[420px] bg-white px-4 py-5 text-black shadow-lg"
         >
-          {/* ==================================================
-              PHARMACY HEADER
-          ================================================== */}
+          {/* HEADER */}
 
           <div className="text-center">
-            <h1 className="text-2xl font-extrabold uppercase tracking-wide">
-              NOVACARE
-            </h1>
+            <h1 className="text-3xl font-black tracking-wide">NOVACARE</h1>
 
-            <p className="mt-1 text-[10px] font-semibold">
+            <p className="mt-1 text-xs font-semibold">
               Pharmacy Management System
             </p>
 
-            <p className="mt-1 text-[10px]">R-04, H-46, S-13</p>
+            <p className="text-xs">R-04, H-46, S-13</p>
 
-            <p className="text-[10px]">MOB: 01401977986</p>
+            <p className="text-xs">MOB: 01401977986</p>
           </div>
 
-          {/* ==================================================
-              LINE
-          ================================================== */}
+          <div className="my-3 border-t border-dashed border-black" />
 
-          <div className="my-2 border-t border-dashed border-gray-500" />
+          {/* TITLE */}
 
-          {/* ==================================================
-              RETAIL INVOICE
-          ================================================== */}
+          <h2 className="text-center text-xl font-bold">RETAIL INVOICE</h2>
 
-          <div className="text-center">
-            <h2 className="text-lg font-bold uppercase">RETAIL INVOICE</h2>
-          </div>
+          {/* ORDER INFORMATION */}
 
-          {/* ==================================================
-              ORDER INFORMATION
-          ================================================== */}
-
-          <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
-            {/* LEFT */}
-
+          <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
             <div>
               <p>
-                <span className="font-bold">ORDER#:</span> {invoiceNumber}
+                <strong>ORDER:</strong> {invoiceNumber}
               </p>
 
               <p className="mt-1">
-                <span className="font-bold">DATE:</span>{" "}
-                {orderDate.toLocaleDateString()}
+                <strong>DATE:</strong> {orderDate.toLocaleDateString()}
               </p>
 
               <p className="mt-1">
-                <span className="font-bold">TIME:</span>{" "}
+                <strong>TIME:</strong>{" "}
                 {orderDate.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -251,65 +631,52 @@ function InvoiceDetails() {
               </p>
             </div>
 
-            {/* RIGHT */}
+            {/* CUSTOMER */}
 
             <div className="text-right">
-              <p className="font-bold">Customer Name:</p>
+              <p className="font-bold">Customer</p>
 
               <p className="break-words">
                 {order.customerName || "Walk-in Customer"}
               </p>
 
-              <p className="mt-1 font-bold">Customer Phone:</p>
+              <p className="mt-1">{order.phone || "N/A"}</p>
 
-              <p>{order.phone || "N/A"}</p>
+              {/* ADDRESS */}
+
+              <p className="mt-1 font-bold">Address</p>
+
+              <p className="break-words leading-4">{order.address || "N/A"}</p>
             </div>
           </div>
 
-          {/* ==================================================
-              LINE
-          ================================================== */}
+          <div className="my-3 border-t border-dashed border-black" />
 
-          <div className="my-2 border-t border-dashed border-gray-500" />
+          {/* TABLE HEADER */}
 
-          {/* ==================================================
-              TABLE HEADER
-          ================================================== */}
+          <div className="grid grid-cols-[25px_1fr_52px_30px_55px] gap-1 text-xs font-bold">
+            <div>SL</div>
 
-          <div
-            className="
-              grid
-              grid-cols-[22px_1fr_48px_28px_48px]
-              gap-1
-              text-[9px]
-              font-bold
-            "
-          >
-            <div>SL.</div>
+            <div>ITEM</div>
 
-            <div>Item</div>
+            <div className="text-right">PRICE</div>
 
-            <div className="text-right">Price/Pcs</div>
+            <div className="text-right">QTY</div>
 
-            <div className="text-right">Qty</div>
-
-            <div className="text-right">Total</div>
+            <div className="text-right">TOTAL</div>
           </div>
 
-          {/* ==================================================
-              TABLE LINE
-          ================================================== */}
+          <div className="my-2 border-t border-dashed border-black" />
 
-          <div className="my-1 border-t border-dashed border-gray-400" />
-
-          {/* ==================================================
-              MEDICINES
-          ================================================== */}
+          {/* MEDICINES */}
 
           <div>
             {items.map((item, index) => {
               const unitPrice =
-                Number(item.unitPrice) || Number(item.sellingPrice) || 0;
+                Number(item.unitPrice) ||
+                Number(item.sellingPrice) ||
+                Number(item.price) ||
+                0;
 
               const quantity = Number(item.quantity) || 0;
 
@@ -318,48 +685,30 @@ function InvoiceDetails() {
 
               return (
                 <div
-                  key={index}
-                  className="
-                    mb-2
-                    grid
-                    grid-cols-[22px_1fr_48px_28px_48px]
-                    gap-1
-                    text-[9px]
-                  "
+                  key={item._id || index}
+                  className="mb-3 grid grid-cols-[25px_1fr_52px_30px_55px] gap-1 text-xs"
                 >
-                  {/* SL */}
-
                   <div>{index + 1}</div>
 
-                  {/* ITEM */}
-
                   <div className="min-w-0">
-                    <p className="break-words font-semibold uppercase">
-                      {item.medicineName}
+                    <p className="break-words font-bold uppercase">
+                      {item.medicineName || item.name || "Medicine"}
                     </p>
 
                     {item.strength && (
-                      <p className="text-[8px] text-gray-500">
-                        {item.strength}
-                      </p>
+                      <p className="text-[10px]">{item.strength}</p>
                     )}
 
                     {item.company && (
-                      <p className="text-[8px] text-gray-500">{item.company}</p>
+                      <p className="text-[10px]">{item.company}</p>
                     )}
                   </div>
 
-                  {/* PRICE */}
-
                   <div className="text-right">{unitPrice.toFixed(2)}</div>
-
-                  {/* QTY */}
 
                   <div className="text-right">{quantity}</div>
 
-                  {/* TOTAL */}
-
-                  <div className="text-right font-semibold">
+                  <div className="text-right font-bold">
                     {totalPrice.toFixed(2)}
                   </div>
                 </div>
@@ -367,26 +716,16 @@ function InvoiceDetails() {
             })}
           </div>
 
-          {/* ==================================================
-              TOTAL LINE
-          ================================================== */}
+          <div className="border-t border-dashed border-black" />
 
-          <div className="border-t border-dashed border-gray-500" />
+          {/* TOTAL */}
 
-          {/* ==================================================
-              TOTAL SECTION
-          ================================================== */}
-
-          <div className="mt-2 space-y-1 text-[9px]">
-            {/* TOTAL */}
-
+          <div className="mt-3 space-y-2 text-xs">
             <div className="flex justify-between">
-              <span className="font-semibold">Total:</span>
+              <span>Total:</span>
 
-              <span className="font-semibold">৳ {subtotal.toFixed(2)}</span>
+              <span>৳ {subtotal.toFixed(2)}</span>
             </div>
-
-            {/* DISCOUNT */}
 
             <div className="flex justify-between">
               <span>Discount:</span>
@@ -394,264 +733,242 @@ function InvoiceDetails() {
               <span>- ৳ {discount.toFixed(2)}</span>
             </div>
 
-            {/* NET AMOUNT */}
-
-            <div className="flex justify-between text-sm font-bold">
-              <span>Net Amount:</span>
+            <div className="flex justify-between text-base font-black">
+              <span>NET AMOUNT:</span>
 
               <span>৳ {grandTotal.toFixed(2)}</span>
             </div>
 
-            {/* PAID */}
-
             <div className="flex justify-between">
-              <span className="font-semibold">Total Paid:</span>
+              <span>Total Paid:</span>
 
-              <span className="font-semibold">৳ {totalPaid.toFixed(2)}</span>
+              <span>৳ {totalPaid.toFixed(2)}</span>
             </div>
 
-            {/* BALANCE */}
-
             <div className="flex justify-between">
-              <span>Customer Balance:</span>
+              <span>Due:</span>
 
-              <span>৳ {customerBalance.toFixed(2)}</span>
+              <span>৳ {dueAmount.toFixed(2)}</span>
             </div>
           </div>
 
-          {/* ==================================================
-              PAYMENT
-          ================================================== */}
+          <div className="my-3 border-t border-dashed border-black" />
 
-          <div className="my-2 border-t border-dashed border-gray-500" />
+          {/* PAYMENT */}
 
-          <div className="text-center text-[9px]">
-            <p>
-              <span className="font-bold">Paid by:</span> {paymentMethod}
-            </p>
+          <div className="text-center text-xs">
+            <strong>Paid By:</strong> {paymentMethod}
           </div>
 
-          {/* ==================================================
-              FOOTER
-          ================================================== */}
+          <div className="my-3 border-t border-dashed border-black" />
 
-          <div className="my-2 border-t border-dashed border-gray-500" />
+          {/* FOOTER */}
 
-          {/* <div
-            className="
-              invoice-footer
-              text-center
-              text-[8px]
-              leading-4
-              text-gray-600
-            "
-          >
-            <p className="font-semibold">
-              Item purchased can be exchanged within 7 days with receipt.
+          <div className="text-center">
+            <p className="text-sm font-bold">
+              Thank you for choosing NovaCare!
             </p>
 
-            <p>Item purchased cannot refund for cash.</p>
-
-            <p className="mt-1">Contact our WhatsApp for Home-delivery.</p>
-
-            <p className="mt-2 font-bold text-gray-800">
-              Thank you for choosing NovaCare.
-            </p>
-
-            <p className="mt-1">Powered and Managed by NovaCare</p>
-          </div> */}
+            <p className="mt-1 text-[10px]">Powered and Managed by NovaCare</p>
+          </div>
         </div>
 
-        {/* ==================================================
+        {/* ========================================
             BUTTONS
-        ================================================== */}
+        ======================================== */}
 
-        <div
-          className="
-            print-hidden
-            mx-auto
-            mt-5
-            flex
-            max-w-[420px]
-            gap-3
-          "
-        >
-          {/* PRINT */}
-
+        <div className="print-hidden mx-auto mt-5 flex max-w-[420px] gap-3">
           <button
-            onClick={() => window.print()}
-            className="
-              flex-1
-              rounded-lg
-              bg-blue-600
-              px-4
-              py-3
-              text-sm
-              font-semibold
-              text-white
-              hover:bg-blue-700
-            "
+            onClick={handlePrint}
+            className="flex-1 rounded-lg bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"
           >
             🖨️ Print Invoice
           </button>
 
-          {/* PDF */}
-
           <button
             onClick={downloadPDF}
-            className="
-              flex-1
-              rounded-lg
-              bg-green-600
-              px-4
-              py-3
-              text-sm
-              font-semibold
-              text-white
-              hover:bg-green-700
-            "
+            className="flex-1 rounded-lg bg-green-600 px-4 py-3 font-bold text-white hover:bg-green-700"
           >
             📄 Download PDF
           </button>
         </div>
       </div>
 
-      {/* ==================================================
+      {/* ============================================
           PRINT CSS
-      ================================================== */}
+      ============================================ */}
 
-      <style>
-        {`
+      <style>{`
 
-          /* ==============================================
-             PRINT
-          ============================================== */
+        @media print {
 
-          @media print {
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
 
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
+          * {
+            box-sizing: border-box;
+          }
 
-            html,
-            body {
-              width: 80mm !important;
+          html,
+          body {
+            width: 80mm !important;
+            min-width: 80mm !important;
 
-              min-width: 80mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
 
-              height: auto !important;
+            background: white !important;
+          }
 
-              min-height: 0 !important;
+          body {
+            font-family: Arial, Helvetica, sans-serif !important;
 
-              margin: 0 !important;
+            color: #000 !important;
 
-              padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
 
-              background: white !important;
-            }
+          body * {
+            visibility: hidden !important;
+          }
 
-            /* ==========================================
-               HIDE EVERYTHING
-            ========================================== */
+          #invoice,
+          #invoice * {
+            visibility: visible !important;
+          }
 
-            body * {
-              visibility: hidden !important;
-            }
+          #invoice {
 
-            /* ==========================================
-               SHOW ONLY INVOICE
-            ========================================== */
+            position: absolute !important;
 
-            #invoice,
-            #invoice * {
-              visibility: visible !important;
-            }
+            left: 0 !important;
+            top: 0 !important;
 
-            /* ==========================================
-               INVOICE
-            ========================================== */
+            width: 80mm !important;
+            max-width: 80mm !important;
 
-            #invoice {
+            margin: 0 !important;
 
-              position: absolute !important;
+            padding: 4mm !important;
 
-              left: 0 !important;
+            background: white !important;
 
-              top: 0 !important;
+            box-shadow: none !important;
 
-              width: 80mm !important;
+            border: none !important;
 
-              max-width: 80mm !important;
+            border-radius: 0 !important;
 
-              height: auto !important;
+            overflow: visible !important;
 
-              min-height: 0 !important;
+            font-family: Arial, Helvetica, sans-serif !important;
 
-              margin: 0 !important;
+            color: #000 !important;
 
-              padding: 3mm !important;
+            font-size: 10px !important;
 
-              background: white !important;
-
-              box-shadow: none !important;
-
-              border: none !important;
-
-              border-radius: 0 !important;
-
-              overflow: visible !important;
-            }
-
-            /* ==========================================
-               REMOVE SCREEN SPACING
-            ========================================== */
-
-            #invoice,
-            #invoice * {
-
-              box-sizing: border-box !important;
-
-            }
-
-            /* ==========================================
-               HIDE BUTTONS
-            ========================================== */
-
-            .print-hidden {
-
-              display: none !important;
-
-              visibility: hidden !important;
-
-            }
-
-            /* ==========================================
-               REMOVE EXTRA HEIGHT
-            ========================================== */
-
-            #invoice > div {
-
-              min-height: 0 !important;
-
-            }
-
-            /* ==========================================
-               FOOTER
-            ========================================== */
-
-            .invoice-footer {
-
-              margin-bottom: 0 !important;
-
-              padding-bottom: 0 !important;
-
-            }
+            line-height: 1.3 !important;
 
           }
 
-        `}
-      </style>
+          #invoice h1 {
+            font-size: 22px !important;
+
+            line-height: 1.1 !important;
+
+            font-weight: 900 !important;
+          }
+
+          #invoice h2 {
+            font-size: 15px !important;
+
+            line-height: 1.2 !important;
+
+            font-weight: 800 !important;
+          }
+
+          #invoice p,
+          #invoice div,
+          #invoice span {
+            color: #000 !important;
+          }
+
+          #invoice .text-xs {
+            font-size: 10px !important;
+          }
+
+          #invoice .text-sm {
+            font-size: 12px !important;
+          }
+
+          #invoice .text-base {
+            font-size: 14px !important;
+          }
+
+          #invoice .text-xl {
+            font-size: 15px !important;
+          }
+
+          #invoice .text-3xl {
+            font-size: 22px !important;
+          }
+
+          #invoice .text-\\[10px\\] {
+            font-size: 9px !important;
+          }
+
+          #invoice .border-dashed {
+            border-color: #000 !important;
+          }
+
+          .print-hidden {
+            display: none !important;
+
+            visibility: hidden !important;
+          }
+
+          .invoice-page {
+            min-height: 0 !important;
+
+            height: auto !important;
+
+            width: 80mm !important;
+
+            padding: 0 !important;
+
+            margin: 0 !important;
+
+            background: white !important;
+          }
+
+          #invoice {
+            min-height: 0 !important;
+
+            height: auto !important;
+          }
+
+          /* Prevent text cutting */
+
+          #invoice p {
+            overflow-wrap: anywhere !important;
+
+            word-break: normal !important;
+          }
+
+          /* Keep medicine rows together */
+
+          #invoice > div {
+            break-inside: avoid !important;
+
+            page-break-inside: avoid !important;
+          }
+
+        }
+
+      `}</style>
     </>
   );
 }
