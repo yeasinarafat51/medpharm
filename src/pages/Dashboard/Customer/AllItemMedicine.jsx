@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import useAuth from "../../../hooks/useAuth";
@@ -14,9 +14,19 @@ function AllItemMedicine() {
   // ==========================================
 
   const [medicines, setMedicines] = useState([]);
+
+  // First page loading
   const [loading, setLoading] = useState(true);
+
+  // Search loading
+  const [searchLoading, setSearchLoading] = useState(false);
+
   const [search, setSearch] = useState("");
+
   const [quantities, setQuantities] = useState({});
+
+  // Axios request cancel করার জন্য
+  const cancelSourceRef = useRef(null);
 
   const API_URL = "https://medpharm-server-sgs6.vercel.app";
 
@@ -24,16 +34,37 @@ function AllItemMedicine() {
   // LOAD MEDICINES
   // ==========================================
 
-  const loadMedicine = async () => {
+  const loadMedicine = async (searchValue = "", isFirstLoad = false) => {
+    // আগের request cancel
+    if (cancelSourceRef.current) {
+      cancelSourceRef.current.cancel();
+    }
+
+    const source = axios.CancelToken.source();
+
+    cancelSourceRef.current = source;
+
     try {
-      setLoading(true);
+      // ========================================
+      // FIRST LOAD
+      // ========================================
+
+      if (isFirstLoad) {
+        setLoading(true);
+      } else {
+        // Search করার সময় full loading নয়
+        setSearchLoading(true);
+      }
 
       const res = await axios.get(`${API_URL}/api/medicines`, {
         params: {
-          search: search.trim(),
+          search: searchValue.trim(),
           sort: "asc",
         },
+
         timeout: 20000,
+
+        cancelToken: source.token,
       });
 
       console.log("Medicine API Response:", res.data);
@@ -49,7 +80,18 @@ function AllItemMedicine() {
           : [];
 
       setMedicines(medicineData);
+
+      // Search result change হলে quantity reset
+      setQuantities({});
     } catch (error) {
+      // ========================================
+      // REQUEST CANCEL হলে ERROR দেখাবে না
+      // ========================================
+
+      if (axios.isCancel(error)) {
+        return;
+      }
+
       console.error("Medicine Load Error:", error);
 
       setMedicines([]);
@@ -63,31 +105,84 @@ function AllItemMedicine() {
         confirmButtonText: "OK",
       });
     } finally {
-      setLoading(false);
+      // ========================================
+      // LOADING STOP
+      // ========================================
+
+      if (isFirstLoad) {
+        setLoading(false);
+      }
+
+      setSearchLoading(false);
     }
   };
 
   // ==========================================
-  // LOAD DATA
+  // INITIAL LOAD
   // ==========================================
 
   useEffect(() => {
-    loadMedicine();
+    loadMedicine("", true);
+
+    // Component unmount হলে request cancel
+    return () => {
+      if (cancelSourceRef.current) {
+        cancelSourceRef.current.cancel();
+      }
+    };
+  }, []);
+
+  // ==========================================
+  // SEARCH EFFECT
+  // ==========================================
+
+  useEffect(() => {
+    // প্রথমবার empty search-এর জন্য এই effect চালানোর দরকার নেই
+    if (search === "") {
+      return;
+    }
+
+    // Debounce
+    const timer = setTimeout(() => {
+      loadMedicine(search, false);
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [search]);
+
+  // ==========================================
+  // SEARCH INPUT
+  // ==========================================
+
+  const handleSearch = (e) => {
+    const value = e.target.value;
+
+    setSearch(value);
+
+    // Search box empty করলে আবার সব medicine load
+    if (value.trim() === "") {
+      loadMedicine("", false);
+    }
+  };
 
   // ==========================================
   // INCREASE QUANTITY
   // ==========================================
 
   const increaseQty = (medicine) => {
+    const stock = Number(medicine.stock) || 0;
+
+    // Stock না থাকলে quantity বাড়বে না
+    if (stock <= 0) {
+      return;
+    }
+
     setQuantities((prev) => {
       const current = prev[medicine._id] || 1;
-      const stock = Number(medicine.stock) || 0;
 
-      if (stock <= 0) {
-        return prev;
-      }
-
+      // Stock এর বেশি হতে পারবে না
       if (current >= stock) {
         return prev;
       }
@@ -104,6 +199,12 @@ function AllItemMedicine() {
   // ==========================================
 
   const decreaseQty = (medicine) => {
+    const stock = Number(medicine.stock) || 0;
+
+    if (stock <= 0) {
+      return;
+    }
+
     setQuantities((prev) => {
       const current = prev[medicine._id] || 1;
 
@@ -123,33 +224,58 @@ function AllItemMedicine() {
   // ==========================================
 
   const handleAddToCart = (medicine) => {
-    // Login check
+    // ========================================
+    // LOGIN CHECK
+    // ========================================
+
     if (!user) {
       Swal.fire({
         icon: "warning",
         title: "Please Login First",
         text: "You need to login before adding medicine to cart.",
+        confirmButtonText: "Login",
       });
 
       return;
     }
 
+    // ========================================
+    // STOCK CHECK
+    // ========================================
+
     const stock = Number(medicine.stock) || 0;
 
-    // Stock check
     if (stock <= 0) {
       Swal.fire({
         icon: "error",
         title: "Out of Stock",
         text: "This medicine is currently out of stock.",
+        confirmButtonText: "OK",
       });
 
       return;
     }
 
+    // ========================================
+    // QUANTITY
+    // ========================================
+
     const qty = quantities[medicine._id] || 1;
 
-    // Quantity check
+    // ========================================
+    // QUANTITY VALIDATION
+    // ========================================
+
+    if (qty <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Quantity",
+        text: "Please select a valid quantity.",
+      });
+
+      return;
+    }
+
     if (qty > stock) {
       Swal.fire({
         icon: "warning",
@@ -160,40 +286,37 @@ function AllItemMedicine() {
       return;
     }
 
-    // Add cart
+    // ========================================
+    // ADD TO CART
+    // ========================================
+
     addToCart({
       ...medicine,
       quantity: qty,
     });
 
-    // Success alert
+    // ========================================
+    // SUCCESS ALERT
+    // ========================================
+
     Swal.fire({
       icon: "success",
       title: "Added To Cart",
-      text: `${qty} item added successfully`,
+      text: `${qty} item added successfully.`,
       timer: 1200,
       showConfirmButton: false,
     });
   };
 
   // ==========================================
-  // SEARCH
-  // ==========================================
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-  };
-
-  // ==========================================
-  // LOADING SCREEN
+  // FULL PAGE LOADING
+  // শুধু প্রথমবার দেখাবে
   // ==========================================
 
   if (loading) {
     return (
       <div className="mx-auto min-h-[70vh] max-w-7xl px-4 py-10">
         <div className="flex min-h-[60vh] flex-col items-center justify-center">
-          {/* Spinner */}
-
           <div
             className="
               h-14
@@ -227,37 +350,83 @@ function AllItemMedicine() {
       ======================================== */}
 
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Title */}
+
         <div>
           <h1 className="text-3xl font-bold text-slate-800">All Medicines</h1>
 
-          <p className="text-gray-500">
+          <p className="mt-1 text-gray-500">
             Browse medicines and add them to your cart.
           </p>
         </div>
 
-        {/* Search */}
+        {/* ======================================
+            SEARCH BOX
+        ====================================== */}
 
-        <input
-          type="text"
-          placeholder="Search medicine..."
-          value={search}
-          onChange={handleSearch}
-          className="
-            w-full
-            rounded-xl
-            border
-            border-gray-300
-            px-4
-            py-3
-            outline-none
-            transition
-            focus:border-blue-600
-            focus:ring-2
-            focus:ring-blue-100
-            md:w-96
-          "
-        />
+        <div className="relative w-full md:w-96">
+          <input
+            type="text"
+            placeholder="Search medicine, company or generic..."
+            value={search}
+            onChange={handleSearch}
+            className="
+              w-full
+              rounded-xl
+              border
+              border-gray-300
+              bg-white
+              px-4
+              py-3
+              pr-12
+              outline-none
+              transition
+              focus:border-blue-600
+              focus:ring-2
+              focus:ring-blue-100
+            "
+          />
+
+          {/* Search Loading */}
+
+          {searchLoading && (
+            <div
+              className="
+                absolute
+                right-4
+                top-1/2
+                h-5
+                w-5
+                -translate-y-1/2
+                animate-spin
+                rounded-full
+                border-2
+                border-gray-300
+                border-t-blue-600
+              "
+            />
+          )}
+        </div>
       </div>
+
+      {/* ========================================
+          SEARCH STATUS
+      ======================================== */}
+
+      {search.trim() && (
+        <div className="mb-5 flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Search result for:{" "}
+            <span className="font-semibold text-blue-600">"{search}"</span>
+          </p>
+
+          {searchLoading && (
+            <span className="text-sm font-medium text-blue-600">
+              Searching...
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ========================================
           EMPTY DATA
@@ -291,6 +460,8 @@ function AllItemMedicine() {
 
               const quantity = quantities[medicine._id] || 1;
 
+              const isOutOfStock = stock <= 0;
+
               return (
                 <div
                   key={medicine._id}
@@ -308,24 +479,36 @@ function AllItemMedicine() {
                   "
                 >
                   {/* ==================================
-                      MOBILE
+                      MOBILE CARD
                   ================================== */}
 
                   <div className="flex p-3 lg:hidden">
                     {/* Image */}
 
-                    <img
-                      src={medicine.image || medisin}
-                      alt={medicine.medicineName || "Medicine"}
-                      className="h-24 w-24 rounded-xl object-cover"
-                    />
+                    <div className="relative">
+                      <img
+                        src={medicine.image || medisin}
+                        alt={medicine.medicineName || "Medicine"}
+                        className="h-24 w-24 rounded-xl object-cover"
+                      />
+
+                      {isOutOfStock && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50">
+                          <span className="text-center text-xs font-bold text-white">
+                            OUT OF
+                            <br />
+                            STOCK
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Content */}
 
                     <div className="ml-3 flex flex-1 flex-col justify-between">
                       <div>
                         <h2 className="line-clamp-1 text-base font-bold text-gray-800">
-                          {medicine.medicineName}
+                          {medicine.medicineName || "Unknown Medicine"}
                         </h2>
 
                         <div className="mt-1 flex">
@@ -348,13 +531,13 @@ function AllItemMedicine() {
                           </span>
 
                           <span className="text-xl font-bold text-green-600">
-                            ৳ {medicine.sellingPrice || 0}
+                            ৳ {Number(medicine.sellingPrice || 0).toFixed(2)}
                           </span>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-600">
-                            MRP ৳ {medicine.mrpePrice || 0}
+                            MRP ৳ {Number(medicine.mrpePrice || 0).toFixed(2)}
                           </span>
 
                           <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-600">
@@ -381,7 +564,7 @@ function AllItemMedicine() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => decreaseQty(medicine)}
-                            disabled={stock <= 0}
+                            disabled={isOutOfStock || quantity <= 1}
                             className="
                               flex
                               h-8
@@ -391,6 +574,9 @@ function AllItemMedicine() {
                               rounded-full
                               bg-red-500
                               text-white
+                              transition
+                              hover:bg-red-600
+                              disabled:cursor-not-allowed
                               disabled:bg-gray-300
                             "
                           >
@@ -403,7 +589,7 @@ function AllItemMedicine() {
 
                           <button
                             onClick={() => increaseQty(medicine)}
-                            disabled={stock <= 0 || quantity >= stock}
+                            disabled={isOutOfStock || quantity >= stock}
                             className="
                               flex
                               h-8
@@ -413,6 +599,9 @@ function AllItemMedicine() {
                               rounded-full
                               bg-green-600
                               text-white
+                              transition
+                              hover:bg-green-700
+                              disabled:cursor-not-allowed
                               disabled:bg-gray-400
                             "
                           >
@@ -422,7 +611,7 @@ function AllItemMedicine() {
 
                         <button
                           onClick={() => handleAddToCart(medicine)}
-                          disabled={stock <= 0}
+                          disabled={isOutOfStock}
                           className="
                             rounded-lg
                             bg-blue-600
@@ -431,18 +620,20 @@ function AllItemMedicine() {
                             text-sm
                             font-semibold
                             text-white
+                            transition
+                            hover:bg-blue-700
                             disabled:cursor-not-allowed
                             disabled:bg-gray-400
                           "
                         >
-                          {stock <= 0 ? "Out of Stock" : "Add"}
+                          {isOutOfStock ? "Out of Stock" : "🛒 Add"}
                         </button>
                       </div>
                     </div>
                   </div>
 
                   {/* ==================================
-                      DESKTOP
+                      DESKTOP CARD
                   ================================== */}
 
                   <div className="hidden lg:block">
@@ -479,45 +670,81 @@ function AllItemMedicine() {
                               : "bg-red-600"
                         }`}
                       >
-                        Stock {stock}
+                        {stock > 0 ? `Stock ${stock}` : "Out of Stock"}
                       </span>
+
+                      {/* Out of Stock Overlay */}
+
+                      {isOutOfStock && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <span className="rounded-lg bg-red-600 px-5 py-3 text-lg font-bold text-white">
+                            OUT OF STOCK
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}
 
                     <div className="p-5">
-                      <h2 className="line-clamp-1 text-xl font-bold">
-                        {medicine.medicineName}
+                      <h2 className="line-clamp-1 text-xl font-bold text-gray-800">
+                        {medicine.medicineName || "Unknown Medicine"}
                       </h2>
 
-                      <p className="text-gray-500">
+                      <p className="mt-1 text-gray-500">
                         {medicine.company || "N/A"}
                       </p>
 
                       {/* Price Box */}
 
-                      <div className="mt-4 rounded-xl bg-gray-50 p-3">
-                        <div className="flex justify-between">
-                          <span>MRP</span>
+                      <div className="mt-4 rounded-xl bg-gray-50 p-4">
+                        {/* MRP */}
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">MRP</span>
 
                           <span className="line-through text-gray-400">
-                            ৳ {medicine.mrpePrice || 0}
+                            ৳ {Number(medicine.mrpePrice || 0).toFixed(2)}
                           </span>
                         </div>
 
-                        <div className="mt-2 flex justify-between">
-                          <span>Discount</span>
+                        {/* Discount */}
 
-                          <span className="rounded-full bg-red-100 px-2 py-1 text-red-600">
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-gray-600">Discount</span>
+
+                          <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600">
                             {medicine.bikriPercent || 0}% OFF
                           </span>
                         </div>
 
-                        <div className="mt-3 flex justify-between">
-                          <span>Selling Price</span>
+                        {/* Selling Price */}
+
+                        <div className="mt-3 flex items-center justify-between border-t pt-3">
+                          <span className="font-semibold text-gray-700">
+                            Selling Price
+                          </span>
 
                           <span className="text-2xl font-bold text-green-600">
-                            ৳ {medicine.sellingPrice || 0}
+                            ৳ {Number(medicine.sellingPrice || 0).toFixed(2)}
+                          </span>
+                        </div>
+
+                        {/* Stock */}
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-gray-600">Available Stock</span>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-sm font-bold ${
+                              stock > 10
+                                ? "bg-green-100 text-green-700"
+                                : stock > 0
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {stock}
                           </span>
                         </div>
                       </div>
@@ -527,34 +754,48 @@ function AllItemMedicine() {
                       <div className="mt-5 flex items-center justify-center gap-4">
                         <button
                           onClick={() => decreaseQty(medicine)}
-                          disabled={stock <= 0}
+                          disabled={isOutOfStock || quantity <= 1}
                           className="
+                            flex
                             h-10
                             w-10
+                            items-center
+                            justify-center
                             rounded-full
                             bg-red-500
                             text-xl
+                            font-bold
                             text-white
+                            transition
+                            hover:bg-red-600
+                            disabled:cursor-not-allowed
                             disabled:bg-gray-300
                           "
                         >
-                          -
+                          −
                         </button>
 
-                        <span className="w-10 text-center text-xl font-bold">
+                        <span className="flex h-10 w-12 items-center justify-center rounded-lg border bg-gray-50 text-xl font-bold">
                           {quantity}
                         </span>
 
                         <button
                           onClick={() => increaseQty(medicine)}
-                          disabled={stock <= 0 || quantity >= stock}
+                          disabled={isOutOfStock || quantity >= stock}
                           className="
+                            flex
                             h-10
                             w-10
+                            items-center
+                            justify-center
                             rounded-full
                             bg-green-600
                             text-xl
+                            font-bold
                             text-white
+                            transition
+                            hover:bg-green-700
+                            disabled:cursor-not-allowed
                             disabled:bg-gray-400
                           "
                         >
@@ -566,7 +807,7 @@ function AllItemMedicine() {
 
                       <button
                         onClick={() => handleAddToCart(medicine)}
-                        disabled={stock <= 0}
+                        disabled={isOutOfStock}
                         className="
                           mt-5
                           w-full
@@ -581,7 +822,7 @@ function AllItemMedicine() {
                           disabled:bg-gray-400
                         "
                       >
-                        {stock <= 0 ? "Out of Stock" : "🛒 Add To Cart"}
+                        {isOutOfStock ? "Out of Stock" : "🛒 Add To Cart"}
                       </button>
                     </div>
                   </div>

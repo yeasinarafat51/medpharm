@@ -16,10 +16,7 @@ function Cart() {
       <div className="flex h-[70vh] flex-col items-center justify-center">
         <h2 className="text-4xl font-bold text-gray-600">Your Cart is Empty</h2>
 
-        <Link
-          to="/all-item-medicine"
-          className="mt-6 rounded bg-blue-600 px-6 py-3 text-white"
-        >
+        <Link to="/" className="mt-6 rounded bg-blue-600 px-6 py-3 text-white">
           Browse Medicines
         </Link>
       </div>
