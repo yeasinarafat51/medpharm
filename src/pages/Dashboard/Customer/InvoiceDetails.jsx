@@ -134,7 +134,7 @@ function InvoiceDetails() {
       pdf.setTextColor(0, 0, 0);
 
       // ============================================
-      // HEADER
+      // PDF HEADER
       // ============================================
 
       pdf.setFont("helvetica", "bold");
@@ -185,7 +185,7 @@ function InvoiceDetails() {
       y += 6;
 
       // ============================================
-      // ORDER
+      // ORDER INFORMATION
       // ============================================
 
       pdf.setFontSize(7);
@@ -356,7 +356,6 @@ function InvoiceDetails() {
         y += Math.max(4, itemLines.length * 3.5);
 
         // Strength
-
         if (item.strength) {
           pdf.setFontSize(6);
 
@@ -372,7 +371,6 @@ function InvoiceDetails() {
         }
 
         // Company
-
         if (item.company) {
           pdf.setFontSize(6);
 
@@ -500,7 +498,7 @@ function InvoiceDetails() {
       });
 
       // ============================================
-      // SAVE
+      // SAVE PDF
       // ============================================
 
       pdf.save(`Invoice-${invoiceNumber}.pdf`);
@@ -516,7 +514,26 @@ function InvoiceDetails() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <h2 className="text-xl font-bold">Loading Invoice...</h2>
+        <div className="text-center">
+          <div
+            className="
+              mx-auto
+              h-12
+              w-12
+              animate-spin
+              rounded-full
+              border-4
+              border-gray-300
+              border-t-blue-600
+            "
+          />
+
+          <h2 className="mt-4 text-xl font-bold text-gray-700">
+            Loading Invoice...
+          </h2>
+
+          <p className="mt-1 text-sm text-gray-500">Please wait a moment</p>
+        </div>
       </div>
     );
   }
@@ -528,8 +545,12 @@ function InvoiceDetails() {
   if (!order) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600">Invoice Not Found</h2>
+        <div className="rounded-xl bg-white p-8 text-center shadow-lg">
+          <div className="text-5xl">📄</div>
+
+          <h2 className="mt-4 text-2xl font-bold text-red-600">
+            Invoice Not Found
+          </h2>
 
           <p className="mt-2 text-gray-600">Invoice ID: {id}</p>
         </div>
@@ -588,9 +609,21 @@ function InvoiceDetails() {
 
         <div
           id="invoice"
-          className="invoice mx-auto w-full max-w-[420px] bg-white px-4 py-5 text-black shadow-lg"
+          className="
+            invoice
+            mx-auto
+            w-full
+            max-w-[420px]
+            bg-white
+            px-4
+            py-5
+            text-black
+            shadow-lg
+          "
         >
-          {/* HEADER */}
+          {/* ========================================
+              HEADER
+          ======================================== */}
 
           <div className="text-center">
             <h1 className="text-3xl font-black tracking-wide">NOVACARE</h1>
@@ -599,20 +632,26 @@ function InvoiceDetails() {
               Pharmacy Management System
             </p>
 
-            <p className="text-xs">R-04, H-46, S-13</p>
+            {/* WhatsApp */}
 
-            <p className="text-xs">MOB: 01401977986</p>
+            <p className="text-xs">WhatsApp: 01620316751</p>
           </div>
 
           <div className="my-3 border-t border-dashed border-black" />
 
-          {/* TITLE */}
+          {/* ========================================
+              TITLE
+          ======================================== */}
 
           <h2 className="text-center text-xl font-bold">RETAIL INVOICE</h2>
 
-          {/* ORDER INFORMATION */}
+          {/* ========================================
+              ORDER INFORMATION
+          ======================================== */}
 
           <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+            {/* ORDER */}
+
             <div>
               <p>
                 <strong>ORDER:</strong> {invoiceNumber}
@@ -642,8 +681,6 @@ function InvoiceDetails() {
 
               <p className="mt-1">{order.phone || "N/A"}</p>
 
-              {/* ADDRESS */}
-
               <p className="mt-1 font-bold">Address</p>
 
               <p className="break-words leading-4">{order.address || "N/A"}</p>
@@ -652,9 +689,19 @@ function InvoiceDetails() {
 
           <div className="my-3 border-t border-dashed border-black" />
 
-          {/* TABLE HEADER */}
+          {/* ========================================
+              TABLE HEADER
+          ======================================== */}
 
-          <div className="grid grid-cols-[25px_1fr_52px_30px_55px] gap-1 text-xs font-bold">
+          <div
+            className="
+              grid
+              grid-cols-[25px_1fr_52px_30px_55px]
+              gap-1
+              text-xs
+              font-bold
+            "
+          >
             <div>SL</div>
 
             <div>ITEM</div>
@@ -668,7 +715,9 @@ function InvoiceDetails() {
 
           <div className="my-2 border-t border-dashed border-black" />
 
-          {/* MEDICINES */}
+          {/* ========================================
+              MEDICINES
+          ======================================== */}
 
           <div>
             {items.map((item, index) => {
@@ -686,7 +735,13 @@ function InvoiceDetails() {
               return (
                 <div
                   key={item._id || index}
-                  className="mb-3 grid grid-cols-[25px_1fr_52px_30px_55px] gap-1 text-xs"
+                  className="
+                    mb-3
+                    grid
+                    grid-cols-[25px_1fr_52px_30px_55px]
+                    gap-1
+                    text-xs
+                  "
                 >
                   <div>{index + 1}</div>
 
@@ -718,7 +773,9 @@ function InvoiceDetails() {
 
           <div className="border-t border-dashed border-black" />
 
-          {/* TOTAL */}
+          {/* ========================================
+              TOTAL
+          ======================================== */}
 
           <div className="mt-3 space-y-2 text-xs">
             <div className="flex justify-between">
@@ -754,7 +811,9 @@ function InvoiceDetails() {
 
           <div className="my-3 border-t border-dashed border-black" />
 
-          {/* PAYMENT */}
+          {/* ========================================
+              PAYMENT
+          ======================================== */}
 
           <div className="text-center text-xs">
             <strong>Paid By:</strong> {paymentMethod}
@@ -762,7 +821,9 @@ function InvoiceDetails() {
 
           <div className="my-3 border-t border-dashed border-black" />
 
-          {/* FOOTER */}
+          {/* ========================================
+              FOOTER
+          ======================================== */}
 
           <div className="text-center">
             <p className="text-sm font-bold">
@@ -777,17 +838,46 @@ function InvoiceDetails() {
             BUTTONS
         ======================================== */}
 
-        <div className="print-hidden mx-auto mt-5 flex max-w-[420px] gap-3">
+        <div
+          className="
+            print-hidden
+            mx-auto
+            mt-5
+            flex
+            max-w-[420px]
+            gap-3
+          "
+        >
           <button
             onClick={handlePrint}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"
+            className="
+              flex-1
+              rounded-lg
+              bg-blue-600
+              px-4
+              py-3
+              font-bold
+              text-white
+              transition
+              hover:bg-blue-700
+            "
           >
             🖨️ Print Invoice
           </button>
 
           <button
             onClick={downloadPDF}
-            className="flex-1 rounded-lg bg-green-600 px-4 py-3 font-bold text-white hover:bg-green-700"
+            className="
+              flex-1
+              rounded-lg
+              bg-green-600
+              px-4
+              py-3
+              font-bold
+              text-white
+              transition
+              hover:bg-green-700
+            "
           >
             📄 Download PDF
           </button>
@@ -823,7 +913,10 @@ function InvoiceDetails() {
           }
 
           body {
-            font-family: Arial, Helvetica, sans-serif !important;
+            font-family:
+              Arial,
+              Helvetica,
+              sans-serif !important;
 
             color: #000 !important;
 
@@ -864,17 +957,20 @@ function InvoiceDetails() {
 
             overflow: visible !important;
 
-            font-family: Arial, Helvetica, sans-serif !important;
+            font-family:
+              Arial,
+              Helvetica,
+              sans-serif !important;
 
             color: #000 !important;
 
             font-size: 10px !important;
 
             line-height: 1.3 !important;
-
           }
 
           #invoice h1 {
+
             font-size: 22px !important;
 
             line-height: 1.1 !important;
@@ -883,6 +979,7 @@ function InvoiceDetails() {
           }
 
           #invoice h2 {
+
             font-size: 15px !important;
 
             line-height: 1.2 !important;
@@ -893,6 +990,7 @@ function InvoiceDetails() {
           #invoice p,
           #invoice div,
           #invoice span {
+
             color: #000 !important;
           }
 
@@ -925,12 +1023,14 @@ function InvoiceDetails() {
           }
 
           .print-hidden {
+
             display: none !important;
 
             visibility: hidden !important;
           }
 
           .invoice-page {
+
             min-height: 0 !important;
 
             height: auto !important;
@@ -945,6 +1045,7 @@ function InvoiceDetails() {
           }
 
           #invoice {
+
             min-height: 0 !important;
 
             height: auto !important;
@@ -953,6 +1054,7 @@ function InvoiceDetails() {
           /* Prevent text cutting */
 
           #invoice p {
+
             overflow-wrap: anywhere !important;
 
             word-break: normal !important;
@@ -961,6 +1063,7 @@ function InvoiceDetails() {
           /* Keep medicine rows together */
 
           #invoice > div {
+
             break-inside: avoid !important;
 
             page-break-inside: avoid !important;
