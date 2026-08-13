@@ -14,18 +14,9 @@ function AllItemMedicine() {
   // ==========================================
 
   const [medicines, setMedicines] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
-
-  const [page, setPage] = useState(1);
-
-  const [totalPages, setTotalPages] = useState(1);
-
   const [quantities, setQuantities] = useState({});
-
-  const limit = 8;
 
   const API_URL = "https://medpharm-server-sgs6.vercel.app";
 
@@ -35,14 +26,11 @@ function AllItemMedicine() {
 
   const loadMedicine = async () => {
     try {
-      // Start loading
       setLoading(true);
 
       const res = await axios.get(`${API_URL}/api/medicines`, {
         params: {
           search: search.trim(),
-          page: page,
-          limit: limit,
           sort: "asc",
         },
         timeout: 20000,
@@ -51,27 +39,21 @@ function AllItemMedicine() {
       console.log("Medicine API Response:", res.data);
 
       // ========================================
-      // SAFE DATA SET
+      // SAFE DATA
       // ========================================
 
       const medicineData = Array.isArray(res.data?.medicines)
         ? res.data.medicines
-        : [];
-
-      const pages = Number(res.data?.totalPages) || 1;
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
 
       setMedicines(medicineData);
-
-      setTotalPages(pages);
     } catch (error) {
       console.error("Medicine Load Error:", error);
 
-      // Empty data
       setMedicines([]);
 
-      setTotalPages(1);
-
-      // Error alert
       Swal.fire({
         icon: "error",
         title: "Failed to Load Medicines",
@@ -81,8 +63,6 @@ function AllItemMedicine() {
         confirmButtonText: "OK",
       });
     } finally {
-      // IMPORTANT
-      // Loading will always stop
       setLoading(false);
     }
   };
@@ -93,7 +73,7 @@ function AllItemMedicine() {
 
   useEffect(() => {
     loadMedicine();
-  }, [search, page]);
+  }, [search]);
 
   // ==========================================
   // INCREASE QUANTITY
@@ -102,15 +82,12 @@ function AllItemMedicine() {
   const increaseQty = (medicine) => {
     setQuantities((prev) => {
       const current = prev[medicine._id] || 1;
-
       const stock = Number(medicine.stock) || 0;
 
-      // Stock 0
       if (stock <= 0) {
         return prev;
       }
 
-      // Cannot exceed stock
       if (current >= stock) {
         return prev;
       }
@@ -146,6 +123,7 @@ function AllItemMedicine() {
   // ==========================================
 
   const handleAddToCart = (medicine) => {
+    // Login check
     if (!user) {
       Swal.fire({
         icon: "warning",
@@ -158,6 +136,7 @@ function AllItemMedicine() {
 
     const stock = Number(medicine.stock) || 0;
 
+    // Stock check
     if (stock <= 0) {
       Swal.fire({
         icon: "error",
@@ -170,6 +149,7 @@ function AllItemMedicine() {
 
     const qty = quantities[medicine._id] || 1;
 
+    // Quantity check
     if (qty > stock) {
       Swal.fire({
         icon: "warning",
@@ -180,11 +160,13 @@ function AllItemMedicine() {
       return;
     }
 
+    // Add cart
     addToCart({
       ...medicine,
       quantity: qty,
     });
 
+    // Success alert
     Swal.fire({
       icon: "success",
       title: "Added To Cart",
@@ -199,32 +181,7 @@ function AllItemMedicine() {
   // ==========================================
 
   const handleSearch = (e) => {
-    const value = e.target.value;
-
-    setSearch(value);
-
-    // Search করলে page 1 এ যাবে
-    setPage(1);
-  };
-
-  // ==========================================
-  // PREVIOUS PAGE
-  // ==========================================
-
-  const handlePrevious = () => {
-    if (page > 1 && !loading) {
-      setPage((prev) => prev - 1);
-    }
-  };
-
-  // ==========================================
-  // NEXT PAGE
-  // ==========================================
-
-  const handleNext = () => {
-    if (page < totalPages && !loading) {
-      setPage((prev) => prev + 1);
-    }
+    setSearch(e.target.value);
   };
 
   // ==========================================
@@ -632,61 +589,6 @@ function AllItemMedicine() {
               );
             })}
           </div>
-
-          {/* ======================================
-              PAGINATION
-          ====================================== */}
-
-          {totalPages > 1 && (
-            <div className="mt-10 flex items-center justify-center gap-3">
-              {/* Previous */}
-
-              <button
-                disabled={page === 1 || loading}
-                onClick={handlePrevious}
-                className="
-                  rounded-lg
-                  bg-gray-200
-                  px-5
-                  py-2
-                  font-semibold
-                  transition
-                  hover:bg-gray-300
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                "
-              >
-                Previous
-              </button>
-
-              {/* Current Page */}
-
-              <div className="rounded-lg bg-blue-600 px-5 py-2 font-bold text-white">
-                {page} / {totalPages}
-              </div>
-
-              {/* Next */}
-
-              <button
-                disabled={page === totalPages || loading}
-                onClick={handleNext}
-                className="
-                  rounded-lg
-                  bg-blue-600
-                  px-5
-                  py-2
-                  font-semibold
-                  text-white
-                  transition
-                  hover:bg-blue-700
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                "
-              >
-                Next
-              </button>
-            </div>
-          )}
         </>
       )}
     </div>
