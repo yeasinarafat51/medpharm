@@ -3,7 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import useAuth from "../../../hooks/useAuth";
 import useCart from "../../../hooks/useCart";
-import medisin from "../../../imges/medicine.jpg";
+import medisin from "../../../imges/medpharm_pharmacy.jpg";
 
 function AllItemMedicine() {
   const { user } = useAuth();
