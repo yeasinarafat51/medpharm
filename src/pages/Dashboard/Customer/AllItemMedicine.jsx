@@ -24,13 +24,9 @@ function AllItemMedicine() {
   // =========================================================
 
   const [medicines, setMedicines] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [searchLoading, setSearchLoading] = useState(false);
-
   const [search, setSearch] = useState("");
-
   const [quantities, setQuantities] = useState({});
 
   // =========================================================
@@ -50,10 +46,7 @@ function AllItemMedicine() {
   // =========================================================
 
   const loadMedicine = async (searchValue = "", isFirstLoad = false) => {
-    // -------------------------------------------------------
     // Cancel previous request
-    // -------------------------------------------------------
-
     if (cancelSourceRef.current) {
       cancelSourceRef.current.cancel();
     }
@@ -63,36 +56,22 @@ function AllItemMedicine() {
     cancelSourceRef.current = source;
 
     try {
-      // -----------------------------------------------------
-      // Loading
-      // -----------------------------------------------------
-
       if (isFirstLoad) {
         setLoading(true);
       } else {
         setSearchLoading(true);
       }
 
-      // -----------------------------------------------------
-      // API Request
-      // -----------------------------------------------------
-
       const res = await axios.get(`${API_URL}/api/medicines`, {
         params: {
           search: searchValue.trim(),
           sort: "asc",
         },
-
         timeout: 30000,
-
         cancelToken: source.token,
       });
 
       console.log("Medicine API:", res.data);
-
-      // -----------------------------------------------------
-      // Safe Data
-      // -----------------------------------------------------
 
       let medicineData = [];
 
@@ -103,14 +82,8 @@ function AllItemMedicine() {
       }
 
       setMedicines(medicineData);
-
-      // Search/change হলে quantity reset
       setQuantities({});
     } catch (error) {
-      // -----------------------------------------------------
-      // Cancelled Request
-      // -----------------------------------------------------
-
       if (axios.isCancel(error)) {
         return;
       }
@@ -128,10 +101,6 @@ function AllItemMedicine() {
           "Unable to load medicines. Please try again.",
       });
     } finally {
-      // -----------------------------------------------------
-      // Stop Loading
-      // -----------------------------------------------------
-
       if (isFirstLoad) {
         setLoading(false);
       }
@@ -181,7 +150,6 @@ function AllItemMedicine() {
 
     setSearch(value);
 
-    // Search empty হলে সব medicine আবার load
     if (value.trim() === "") {
       loadMedicine("", false);
     }
@@ -250,10 +218,6 @@ function AllItemMedicine() {
   // =========================================================
 
   const handleAddToCart = (medicine) => {
-    // -------------------------------------------------------
-    // Login Check
-    // -------------------------------------------------------
-
     if (!user) {
       Swal.fire({
         icon: "warning",
@@ -264,10 +228,6 @@ function AllItemMedicine() {
 
       return;
     }
-
-    // -------------------------------------------------------
-    // Stock
-    // -------------------------------------------------------
 
     const stock = Number(medicine.stock) || 0;
 
@@ -281,15 +241,7 @@ function AllItemMedicine() {
       return;
     }
 
-    // -------------------------------------------------------
-    // Quantity
-    // -------------------------------------------------------
-
     const qty = quantities[medicine._id] || 1;
-
-    // -------------------------------------------------------
-    // Stock Validation
-    // -------------------------------------------------------
 
     if (qty > stock) {
       Swal.fire({
@@ -301,18 +253,10 @@ function AllItemMedicine() {
       return;
     }
 
-    // -------------------------------------------------------
-    // Add
-    // -------------------------------------------------------
-
     addToCart({
       ...medicine,
       quantity: qty,
     });
-
-    // -------------------------------------------------------
-    // Success
-    // -------------------------------------------------------
 
     Swal.fire({
       icon: "success",
@@ -417,9 +361,7 @@ function AllItemMedicine() {
             </div>
           </div>
 
-          {/* =================================================
-              SEARCH
-          ================================================= */}
+          {/* SEARCH */}
 
           <div className="relative w-full md:w-96">
             <FaSearch
@@ -512,22 +454,9 @@ function AllItemMedicine() {
         ================================================== */}
 
         {medicines.length === 0 ? (
-          <div
-            className="
-              flex
-              min-h-[45vh]
-              items-center
-              justify-center
-            "
-          >
+          <div className="flex min-h-[45vh] items-center justify-center">
             <div className="text-center">
-              <FaCapsules
-                className="
-                  mx-auto
-                  text-6xl
-                  text-gray-300
-                "
-              />
+              <FaCapsules className="mx-auto text-6xl text-gray-300" />
 
               <h2 className="mt-4 text-2xl font-black text-gray-700">
                 No Medicine Found
@@ -544,7 +473,7 @@ function AllItemMedicine() {
           <>
             {/* =================================================
                 MOBILE VIEW
-                ONE CARD PER ROW
+                STOCK HIDDEN
             ================================================= */}
 
             <div className="space-y-3 lg:hidden">
@@ -626,20 +555,6 @@ function AllItemMedicine() {
                         "
                       >
                         {medicine.category || "Medicine"}
-                      </span>
-
-                      {/* STOCK */}
-
-                      <span
-                        className={`absolute bottom-2 left-2 rounded-full px-2 py-1 text-[8px] font-bold text-white shadow sm:text-[9px] ${
-                          stock > 10
-                            ? "bg-green-600"
-                            : stock > 0
-                              ? "bg-yellow-500"
-                              : "bg-red-600"
-                        }`}
-                      >
-                        {stock > 0 ? `Stock ${stock}` : "Out"}
                       </span>
 
                       {/* OUT OF STOCK */}
@@ -727,9 +642,7 @@ function AllItemMedicine() {
                         {medicine.company || "N/A"}
                       </p>
 
-                      {/* ======================================
-                          PRICE BOX
-                      ====================================== */}
+                      {/* PRICE BOX */}
 
                       <div
                         className="
@@ -804,7 +717,7 @@ function AllItemMedicine() {
                           </span>
                         </div>
 
-                        {/* SELLING */}
+                        {/* SELLING PRICE */}
 
                         <div
                           className="
@@ -842,9 +755,7 @@ function AllItemMedicine() {
                         </div>
                       </div>
 
-                      {/* ======================================
-                          ACTION ROW
-                      ====================================== */}
+                      {/* ACTION ROW */}
 
                       <div
                         className="
@@ -981,6 +892,7 @@ function AllItemMedicine() {
 
             {/* =================================================
                 DESKTOP VIEW
+                STOCK HIDDEN
             ================================================= */}
 
             <div className="hidden gap-5 lg:grid lg:grid-cols-4">
@@ -1029,7 +941,7 @@ function AllItemMedicine() {
                         "
                       />
 
-                      {/* CATEGORY */}
+                      {/* CATEGORY ONLY */}
 
                       <span
                         className="
@@ -1048,21 +960,7 @@ function AllItemMedicine() {
                         {medicine.category || "Medicine"}
                       </span>
 
-                      {/* STOCK */}
-
-                      <span
-                        className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white ${
-                          stock > 10
-                            ? "bg-green-600"
-                            : stock > 0
-                              ? "bg-yellow-500"
-                              : "bg-red-600"
-                        }`}
-                      >
-                        {stock > 0 ? `Stock ${stock}` : "Out of Stock"}
-                      </span>
-
-                      {/* OUT */}
+                      {/* OUT OF STOCK */}
 
                       {isOutOfStock && (
                         <div
@@ -1161,7 +1059,7 @@ function AllItemMedicine() {
                           </span>
                         </div>
 
-                        {/* SELLING */}
+                        {/* SELLING PRICE */}
 
                         <div
                           className="
@@ -1181,29 +1079,13 @@ function AllItemMedicine() {
                             ৳ {sellingPrice.toFixed(2)}
                           </span>
                         </div>
-
-                        {/* STOCK */}
-
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className="text-gray-600">Available Stock</span>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-sm font-bold ${
-                              stock > 10
-                                ? "bg-green-100 text-green-700"
-                                : stock > 0
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {stock}
-                          </span>
-                        </div>
                       </div>
 
                       {/* QUANTITY */}
 
                       <div className="mt-5 flex items-center justify-center gap-4">
+                        {/* MINUS */}
+
                         <button
                           type="button"
                           onClick={() => decreaseQty(medicine)}
@@ -1226,6 +1108,8 @@ function AllItemMedicine() {
                           <FaMinus />
                         </button>
 
+                        {/* QUANTITY */}
+
                         <span
                           className="
                             flex
@@ -1241,6 +1125,8 @@ function AllItemMedicine() {
                         >
                           {quantity}
                         </span>
+
+                        {/* PLUS */}
 
                         <button
                           type="button"
