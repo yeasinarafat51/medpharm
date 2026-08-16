@@ -8,44 +8,78 @@ import {
   FaShoppingCart,
   FaSearch,
   FaCapsules,
-  FaExclamationTriangle,
+  FaBuilding,
 } from "react-icons/fa";
 
 import useAuth from "../../../hooks/useAuth";
 import useCart from "../../../hooks/useCart";
+
 import medisin from "../../../imges/medpharm_pharmacy.jpg";
 
 function AllItemMedicine() {
   const { user } = useAuth();
   const { addToCart } = useCart();
 
-  // =========================================================
-  // STATES
-  // =========================================================
-
-  const [medicines, setMedicines] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [quantities, setQuantities] = useState({});
-
-  // =========================================================
-  // AXIOS CANCEL
-  // =========================================================
-
-  const cancelSourceRef = useRef(null);
-
-  // =========================================================
+  // =====================================================
   // API
-  // =========================================================
+  // =====================================================
 
   const API_URL = "https://medpharm-server-sgs6.vercel.app";
 
-  // =========================================================
-  // LOAD MEDICINES
-  // =========================================================
+  // =====================================================
+  // STATES
+  // =====================================================
 
-  const loadMedicine = async (searchValue = "", isFirstLoad = false) => {
+  const [medicines, setMedicines] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const [search, setSearch] = useState("");
+
+  const [selectedCompany, setSelectedCompany] = useState("");
+
+  const [quantities, setQuantities] = useState({});
+
+  const cancelSourceRef = useRef(null);
+
+  // =====================================================
+  // COMPANIES
+  // =====================================================
+
+  const companies = [
+    {
+      name: "All Medicines",
+      value: "",
+    },
+    {
+      name: "Square",
+      value: "Square",
+    },
+    {
+      name: "SKF",
+      value: "SKF",
+    },
+    {
+      name: "Radiant",
+      value: "Radiant",
+    },
+    {
+      name: "Aristopharma",
+      value: "Aristopharma",
+    },
+  ];
+
+  // =====================================================
+  // LOAD MEDICINES
+  // =====================================================
+
+  const loadMedicine = async (
+    searchValue = "",
+    companyValue = selectedCompany,
+    isFirstLoad = false,
+  ) => {
     // Cancel previous request
     if (cancelSourceRef.current) {
       cancelSourceRef.current.cancel();
@@ -65,9 +99,12 @@ function AllItemMedicine() {
       const res = await axios.get(`${API_URL}/api/medicines`, {
         params: {
           search: searchValue.trim(),
+          company: companyValue,
           sort: "asc",
         },
+
         timeout: 30000,
+
         cancelToken: source.token,
       });
 
@@ -82,6 +119,7 @@ function AllItemMedicine() {
       }
 
       setMedicines(medicineData);
+
       setQuantities({});
     } catch (error) {
       if (axios.isCancel(error)) {
@@ -98,7 +136,7 @@ function AllItemMedicine() {
         text:
           error?.response?.data?.message ||
           error?.message ||
-          "Unable to load medicines. Please try again.",
+          "Unable to load medicines.",
       });
     } finally {
       if (isFirstLoad) {
@@ -109,12 +147,12 @@ function AllItemMedicine() {
     }
   };
 
-  // =========================================================
+  // =====================================================
   // INITIAL LOAD
-  // =========================================================
+  // =====================================================
 
   useEffect(() => {
-    loadMedicine("", true);
+    loadMedicine("", "", true);
 
     return () => {
       if (cancelSourceRef.current) {
@@ -123,17 +161,13 @@ function AllItemMedicine() {
     };
   }, []);
 
-  // =========================================================
+  // =====================================================
   // SEARCH DEBOUNCE
-  // =========================================================
+  // =====================================================
 
   useEffect(() => {
-    if (search === "") {
-      return;
-    }
-
     const timer = setTimeout(() => {
-      loadMedicine(search, false);
+      loadMedicine(search, selectedCompany, false);
     }, 400);
 
     return () => {
@@ -141,38 +175,44 @@ function AllItemMedicine() {
     };
   }, [search]);
 
-  // =========================================================
-  // SEARCH HANDLER
-  // =========================================================
+  // =====================================================
+  // COMPANY CHANGE
+  // =====================================================
 
-  const handleSearch = (e) => {
-    const value = e.target.value;
+  const handleCompanyChange = (company) => {
+    setSelectedCompany(company);
 
-    setSearch(value);
+    setSearch("");
 
-    if (value.trim() === "") {
-      loadMedicine("", false);
-    }
+    setQuantities({});
+
+    loadMedicine("", company, false);
   };
 
-  // =========================================================
-  // GET QUANTITY
-  // =========================================================
+  // =====================================================
+  // SEARCH
+  // =====================================================
+
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+  };
+
+  // =====================================================
+  // QUANTITY
+  // =====================================================
 
   const getQuantity = (medicine) => {
     return quantities[medicine._id] || 1;
   };
 
-  // =========================================================
-  // INCREASE QUANTITY
-  // =========================================================
+  // =====================================================
+  // INCREASE
+  // =====================================================
 
   const increaseQty = (medicine) => {
     const stock = Number(medicine.stock) || 0;
 
-    if (stock <= 0) {
-      return;
-    }
+    if (stock <= 0) return;
 
     setQuantities((prev) => {
       const current = prev[medicine._id] || 1;
@@ -188,17 +228,11 @@ function AllItemMedicine() {
     });
   };
 
-  // =========================================================
-  // DECREASE QUANTITY
-  // =========================================================
+  // =====================================================
+  // DECREASE
+  // =====================================================
 
   const decreaseQty = (medicine) => {
-    const stock = Number(medicine.stock) || 0;
-
-    if (stock <= 0) {
-      return;
-    }
-
     setQuantities((prev) => {
       const current = prev[medicine._id] || 1;
 
@@ -213,9 +247,9 @@ function AllItemMedicine() {
     });
   };
 
-  // =========================================================
+  // =====================================================
   // ADD TO CART
-  // =========================================================
+  // =====================================================
 
   const handleAddToCart = (medicine) => {
     if (!user) {
@@ -241,9 +275,9 @@ function AllItemMedicine() {
       return;
     }
 
-    const qty = quantities[medicine._id] || 1;
+    const quantity = quantities[medicine._id] || 1;
 
-    if (qty > stock) {
+    if (quantity > stock) {
       Swal.fire({
         icon: "warning",
         title: "Not Enough Stock",
@@ -255,225 +289,198 @@ function AllItemMedicine() {
 
     addToCart({
       ...medicine,
-      quantity: qty,
+      quantity,
     });
 
     Swal.fire({
       icon: "success",
       title: "Added To Cart",
-      text: `${qty} item added successfully.`,
+      text: `${quantity} item added successfully.`,
       timer: 1100,
       showConfirmButton: false,
     });
   };
 
-  // =========================================================
-  // FULL PAGE LOADING
-  // =========================================================
+  // =====================================================
+  // LOADING
+  // =====================================================
 
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center bg-gray-50 px-4">
+      <div className="flex min-h-[70vh] items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div
-            className="
-              mx-auto
-              h-12
-              w-12
-              animate-spin
-              rounded-full
-              border-4
-              border-gray-200
-              border-t-blue-600
-            "
-          />
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
-          <h2 className="mt-4 text-lg font-bold text-gray-700">
+          <h2 className="mt-4 text-lg font-bold text-slate-700">
             Loading Medicines...
           </h2>
 
-          <p className="mt-1 text-sm text-gray-400">Please wait a moment</p>
+          <p className="mt-1 text-sm text-slate-400">Please wait a moment</p>
         </div>
       </div>
     );
   }
 
-  // =========================================================
+  // =====================================================
   // MAIN
-  // =========================================================
+  // =====================================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
-        {/* ==================================================
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-3 py-5 sm:px-5 lg:px-6">
+        {/* =================================================
             HEADER
-        ================================================== */}
+        ================================================= */}
 
-        <div
-          className="
-            mb-5
-            flex
-            flex-col
-            gap-4
-            sm:mb-7
-            md:flex-row
-            md:items-center
-            md:justify-between
-          "
-        >
-          {/* TITLE */}
+        <div className="mb-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* TITLE */}
 
-          <div>
-            <div className="flex items-center gap-2">
-              <div
-                className="
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-blue-600
-                  text-white
-                  shadow-md
-                "
-              >
-                <FaCapsules />
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
+                <FaCapsules className="text-lg" />
               </div>
 
               <div>
-                <h1
-                  className="
-                    text-2xl
-                    font-black
-                    tracking-tight
-                    text-slate-800
-                    sm:text-3xl
-                  "
-                >
+                <h1 className="text-2xl font-black tracking-tight text-slate-800 sm:text-3xl">
                   All Medicines
                 </h1>
 
-                <p className="text-xs text-gray-500 sm:text-sm">
-                  Browse medicines and add them to your cart.
+                <p className="text-xs text-slate-500 sm:text-sm">
+                  Find medicines from your favorite pharmaceutical company.
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* SEARCH */}
+            {/* SEARCH */}
 
-          <div className="relative w-full md:w-96">
-            <FaSearch
-              className="
-                absolute
-                left-4
-                top-1/2
-                -translate-y-1/2
-                text-gray-400
-              "
-            />
+            <div className="relative w-full md:w-96">
+              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
 
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search medicine..."
-              className="
-                w-full
-                rounded-xl
-                border
-                border-gray-200
-                bg-white
-                py-3
-                pl-11
-                pr-11
-                text-sm
-                shadow-sm
-                outline-none
-                transition
-                focus:border-blue-500
-                focus:ring-4
-                focus:ring-blue-100
-              "
-            />
-
-            {searchLoading && (
-              <div
+              <input
+                type="text"
+                value={search}
+                onChange={handleSearch}
+                placeholder="Search medicine..."
                 className="
-                  absolute
-                  right-4
-                  top-1/2
-                  h-5
-                  w-5
-                  -translate-y-1/2
-                  animate-spin
-                  rounded-full
-                  border-2
-                  border-gray-300
-                  border-t-blue-600
+                  w-full
+                  rounded-2xl
+                  border
+                  border-slate-200
+                  bg-white
+                  py-3
+                  pl-11
+                  pr-11
+                  text-sm
+                  text-slate-700
+                  shadow-sm
+                  outline-none
+                  transition
+                  focus:border-blue-500
+                  focus:ring-4
+                  focus:ring-blue-100
                 "
               />
-            )}
+
+              {searchLoading && (
+                <div className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ==================================================
-            SEARCH RESULT
-        ================================================== */}
+        {/* =================================================
+            COMPANY BUTTONS
+        ================================================= */}
 
-        {search.trim() && (
-          <div
-            className="
-              mb-4
-              flex
-              items-center
-              justify-between
-              rounded-xl
-              border
-              border-blue-100
-              bg-blue-50
-              px-3
-              py-2.5
-              text-xs
-              sm:text-sm
-            "
-          >
-            <p className="text-blue-700">
-              Search result for <span className="font-bold">"{search}"</span>
-            </p>
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <FaBuilding className="text-blue-600" />
 
-            {searchLoading && (
-              <span className="font-semibold text-blue-600">Searching...</span>
-            )}
+            <h2 className="text-sm font-bold text-slate-700">
+              Pharmaceutical Companies
+            </h2>
           </div>
-        )}
 
-        {/* ==================================================
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {companies.map((company) => {
+              const active = selectedCompany === company.value;
+
+              return (
+                <button
+                  key={company.value || "all"}
+                  type="button"
+                  onClick={() => handleCompanyChange(company.value)}
+                  className={`
+                    shrink-0
+                    rounded-xl
+                    px-4
+                    py-2.5
+                    text-xs
+                    font-bold
+                    transition-all
+                    duration-200
+                    sm:px-5
+                    sm:text-sm
+                    ${
+                      active
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                        : "border border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+                    }
+                  `}
+                >
+                  {company.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* =================================================
+            CURRENT FILTER
+        ================================================= */}
+
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+          <div>
+            <p className="text-xs text-blue-500">Showing medicines from</p>
+
+            <p className="text-sm font-black text-blue-700">
+              {selectedCompany || "All Companies"}
+            </p>
+          </div>
+
+          <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+            {medicines.length} Medicines
+          </div>
+        </div>
+
+        {/* =================================================
             NO MEDICINE
-        ================================================== */}
+        ================================================= */}
 
         {medicines.length === 0 ? (
           <div className="flex min-h-[45vh] items-center justify-center">
             <div className="text-center">
-              <FaCapsules className="mx-auto text-6xl text-gray-300" />
+              <FaCapsules className="mx-auto text-6xl text-slate-300" />
 
-              <h2 className="mt-4 text-2xl font-black text-gray-700">
+              <h2 className="mt-4 text-2xl font-black text-slate-700">
                 No Medicine Found
               </h2>
 
-              <p className="mt-2 text-sm text-gray-500">
-                {search
-                  ? `No medicine found for "${search}"`
-                  : "There are no medicines available."}
+              <p className="mt-2 text-sm text-slate-500">
+                {selectedCompany
+                  ? `No medicine found for ${selectedCompany}.`
+                  : search
+                    ? `No medicine found for "${search}".`
+                    : "There are no medicines available."}
               </p>
             </div>
           </div>
         ) : (
           <>
             {/* =================================================
-                MOBILE VIEW
-                STOCK HIDDEN
+                MOBILE
+                ONE CARD PER ROW
             ================================================= */}
 
             <div className="space-y-3 lg:hidden">
@@ -498,28 +505,19 @@ function AllItemMedicine() {
                       flex
                       w-full
                       overflow-hidden
-                      rounded-xl
+                      rounded-2xl
                       border
-                      border-gray-200
+                      border-slate-200
                       bg-white
                       shadow-sm
-                      transition-all
+                      transition
                       duration-300
                       hover:shadow-md
                     "
                   >
-                    {/* ========================================
-                        MOBILE IMAGE
-                    ======================================== */}
+                    {/* IMAGE */}
 
-                    <div
-                      className="
-                        relative
-                        w-28
-                        shrink-0
-                        sm:w-36
-                      "
-                    >
+                    <div className="relative w-28 shrink-0 sm:w-36">
                       <img
                         src={medicine.image || medisin}
                         alt={medicine.medicineName || "Medicine"}
@@ -534,243 +532,72 @@ function AllItemMedicine() {
                         "
                       />
 
-                      {/* CATEGORY */}
-
-                      <span
-                        className="
-                          absolute
-                          left-2
-                          top-2
-                          max-w-[90%]
-                          truncate
-                          rounded-full
-                          bg-blue-600
-                          px-2
-                          py-1
-                          text-[8px]
-                          font-bold
-                          text-white
-                          shadow
-                          sm:text-[9px]
-                        "
-                      >
+                      <span className="absolute left-2 top-2 rounded-full bg-blue-600 px-2 py-1 text-[8px] font-bold text-white shadow sm:text-[9px]">
                         {medicine.category || "Medicine"}
                       </span>
 
-                      {/* OUT OF STOCK */}
-
                       {isOutOfStock && (
-                        <div
-                          className="
-                            absolute
-                            inset-0
-                            flex
-                            items-center
-                            justify-center
-                            bg-black/45
-                          "
-                        >
-                          <span
-                            className="
-                              flex
-                              items-center
-                              gap-1
-                              rounded-md
-                              bg-red-600
-                              px-2
-                              py-1
-                              text-[8px]
-                              font-black
-                              text-white
-                              sm:text-[9px]
-                            "
-                          >
-                            <FaExclamationTriangle />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+                          <span className="rounded-lg bg-red-600 px-2 py-1 text-[8px] font-black text-white">
                             OUT OF STOCK
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* ========================================
-                        MOBILE CONTENT
-                    ======================================== */}
+                    {/* CONTENT */}
 
                     <div className="min-w-0 flex-1 p-3">
-                      {/* NAME */}
-
-                      <h2
-                        className="
-                          truncate
-                          text-sm
-                          font-black
-                          leading-5
-                          text-gray-800
-                          sm:text-base
-                        "
-                      >
+                      <h2 className="truncate text-sm font-black text-slate-800 sm:text-base">
                         {medicine.medicineName || "Unknown Medicine"}
                       </h2>
 
-                      {/* GENERIC */}
-
                       {medicine.genericName && (
-                        <p
-                          className="
-                            mt-0.5
-                            truncate
-                            text-[9px]
-                            text-blue-600
-                            sm:text-[10px]
-                          "
-                        >
+                        <p className="mt-0.5 truncate text-[9px] text-blue-600 sm:text-[10px]">
                           {medicine.genericName}
                         </p>
                       )}
 
-                      {/* COMPANY */}
-
-                      <p
-                        className="
-                          mt-0.5
-                          truncate
-                          text-[9px]
-                          text-gray-500
-                          sm:text-[10px]
-                        "
-                      >
+                      <p className="mt-0.5 truncate text-[9px] text-slate-500 sm:text-[10px]">
                         {medicine.company || "N/A"}
                       </p>
 
-                      {/* PRICE BOX */}
+                      {/* PRICE */}
 
-                      <div
-                        className="
-                          mt-2
-                          rounded-lg
-                          bg-gray-50
-                          p-2
-                          sm:p-2.5
-                        "
-                      >
-                        {/* MRP */}
+                      <div className="mt-2 rounded-xl bg-slate-50 p-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] text-slate-500">MRP</span>
 
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className="
-                              text-[9px]
-                              font-medium
-                              text-gray-500
-                              sm:text-[10px]
-                            "
-                          >
-                            MRP
-                          </span>
-
-                          <span
-                            className="
-                              text-[9px]
-                              text-gray-400
-                              line-through
-                              sm:text-[10px]
-                            "
-                          >
+                          <span className="text-[9px] text-slate-400 line-through">
                             ৳ {mrpPrice.toFixed(2)}
                           </span>
                         </div>
 
-                        {/* DISCOUNT */}
-
-                        <div
-                          className="
-                            mt-1
-                            flex
-                            items-center
-                            justify-between
-                            gap-2
-                          "
-                        >
-                          <span
-                            className="
-                              text-[9px]
-                              font-medium
-                              text-gray-500
-                              sm:text-[10px]
-                            "
-                          >
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="text-[9px] text-slate-500">
                             Discount
                           </span>
 
-                          <span
-                            className="
-                              rounded-full
-                              bg-red-100
-                              px-2
-                              py-0.5
-                              text-[8px]
-                              font-bold
-                              text-red-600
-                              sm:text-[9px]
-                            "
-                          >
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-bold text-red-600">
                             {discount}% OFF
                           </span>
                         </div>
 
-                        {/* SELLING PRICE */}
-
-                        <div
-                          className="
-                            mt-1
-                            flex
-                            items-center
-                            justify-between
-                            gap-2
-                            border-t
-                            border-gray-200
-                            pt-1.5
-                          "
-                        >
-                          <span
-                            className="
-                              text-[9px]
-                              font-bold
-                              text-gray-600
-                              sm:text-[10px]
-                            "
-                          >
-                            Selling Price
+                        <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1.5">
+                          <span className="text-[9px] font-bold text-slate-600">
+                            Price
                           </span>
 
-                          <span
-                            className="
-                              text-base
-                              font-black
-                              text-green-600
-                              sm:text-lg
-                            "
-                          >
+                          <span className="text-base font-black text-green-600 sm:text-lg">
                             ৳ {sellingPrice.toFixed(2)}
                           </span>
                         </div>
                       </div>
 
-                      {/* ACTION ROW */}
+                      {/* ACTION */}
 
-                      <div
-                        className="
-                          mt-2
-                          flex
-                          items-center
-                          gap-2
-                          sm:mt-3
-                        "
-                      >
-                        {/* QUANTITY */}
-
+                      <div className="mt-2 flex items-center gap-2">
                         <div className="flex shrink-0 items-center gap-1">
-                          {/* MINUS */}
-
                           <button
                             type="button"
                             onClick={() => decreaseQty(medicine)}
@@ -784,44 +611,18 @@ function AllItemMedicine() {
                               rounded-full
                               bg-red-500
                               text-[9px]
-                              font-bold
                               text-white
                               transition
                               hover:bg-red-600
-                              disabled:cursor-not-allowed
-                              disabled:bg-gray-300
-                              sm:h-8
-                              sm:w-8
+                              disabled:bg-slate-300
                             "
                           >
                             <FaMinus />
                           </button>
 
-                          {/* NUMBER */}
-
-                          <span
-                            className="
-                              flex
-                              h-7
-                              min-w-8
-                              items-center
-                              justify-center
-                              rounded-md
-                              border
-                              border-gray-200
-                              bg-gray-50
-                              px-1
-                              text-xs
-                              font-black
-                              text-gray-700
-                              sm:h-8
-                              sm:min-w-9
-                            "
-                          >
+                          <span className="flex h-7 min-w-8 items-center justify-center rounded-lg border bg-slate-50 px-1 text-xs font-black text-slate-700">
                             {quantity}
                           </span>
-
-                          {/* PLUS */}
 
                           <button
                             type="button"
@@ -836,21 +637,15 @@ function AllItemMedicine() {
                               rounded-full
                               bg-green-600
                               text-[9px]
-                              font-bold
                               text-white
                               transition
                               hover:bg-green-700
-                              disabled:cursor-not-allowed
-                              disabled:bg-gray-400
-                              sm:h-8
-                              sm:w-8
+                              disabled:bg-slate-300
                             "
                           >
                             <FaPlus />
                           </button>
                         </div>
-
-                        {/* ADD TO CART */}
 
                         <button
                           type="button"
@@ -870,12 +665,9 @@ function AllItemMedicine() {
                             text-[9px]
                             font-bold
                             text-white
-                            shadow-sm
                             transition
                             hover:bg-blue-700
-                            disabled:cursor-not-allowed
-                            disabled:bg-gray-400
-                            sm:py-2
+                            disabled:bg-slate-400
                             sm:text-[10px]
                           "
                         >
@@ -891,15 +683,14 @@ function AllItemMedicine() {
             </div>
 
             {/* =================================================
-                DESKTOP VIEW
-                STOCK HIDDEN
+                DESKTOP
             ================================================= */}
 
             <div className="hidden gap-5 lg:grid lg:grid-cols-4">
               {medicines.map((medicine) => {
                 const stock = Number(medicine.stock) || 0;
 
-                const quantity = quantities[medicine._id] || 1;
+                const quantity = getQuantity(medicine);
 
                 const isOutOfStock = stock <= 0;
 
@@ -916,7 +707,7 @@ function AllItemMedicine() {
                       overflow-hidden
                       rounded-2xl
                       border
-                      border-gray-200
+                      border-slate-200
                       bg-white
                       shadow-sm
                       transition-all
@@ -932,7 +723,7 @@ function AllItemMedicine() {
                         src={medicine.image || medisin}
                         alt={medicine.medicineName || "Medicine"}
                         className="
-                          h-56
+                          h-52
                           w-full
                           object-cover
                           transition
@@ -941,48 +732,13 @@ function AllItemMedicine() {
                         "
                       />
 
-                      {/* CATEGORY ONLY */}
-
-                      <span
-                        className="
-                          absolute
-                          left-3
-                          top-3
-                          rounded-full
-                          bg-blue-600
-                          px-3
-                          py-1
-                          text-xs
-                          font-bold
-                          text-white
-                        "
-                      >
+                      <span className="absolute left-3 top-3 rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white">
                         {medicine.category || "Medicine"}
                       </span>
 
-                      {/* OUT OF STOCK */}
-
                       {isOutOfStock && (
-                        <div
-                          className="
-                            absolute
-                            inset-0
-                            flex
-                            items-center
-                            justify-center
-                            bg-black/40
-                          "
-                        >
-                          <span
-                            className="
-                              rounded-lg
-                              bg-red-600
-                              px-5
-                              py-3
-                              font-bold
-                              text-white
-                            "
-                          >
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <span className="rounded-lg bg-red-600 px-4 py-2 text-sm font-black text-white">
                             OUT OF STOCK
                           </span>
                         </div>
@@ -991,91 +747,48 @@ function AllItemMedicine() {
 
                     {/* CONTENT */}
 
-                    <div className="p-5">
-                      {/* NAME */}
-
-                      <h2
-                        className="
-                          line-clamp-1
-                          text-xl
-                          font-bold
-                          text-gray-800
-                        "
-                      >
+                    <div className="p-4">
+                      <h2 className="line-clamp-1 text-lg font-black text-slate-800">
                         {medicine.medicineName || "Unknown Medicine"}
                       </h2>
 
-                      {/* GENERIC */}
-
                       {medicine.genericName && (
-                        <p className="mt-1 text-xs text-blue-600">
+                        <p className="mt-1 line-clamp-1 text-xs text-blue-600">
                           {medicine.genericName}
                         </p>
                       )}
 
-                      {/* COMPANY */}
-
-                      <p className="mt-1 text-sm text-gray-500">
+                      <p className="mt-1 text-sm text-slate-500">
                         {medicine.company || "N/A"}
                       </p>
 
-                      {/* PRICE BOX */}
+                      {/* PRICE */}
 
-                      <div
-                        className="
-                          mt-4
-                          rounded-xl
-                          bg-gray-50
-                          p-4
-                        "
-                      >
-                        {/* MRP */}
-
+                      <div className="mt-3 rounded-xl bg-slate-50 p-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-600">MRP</span>
+                          <span className="text-xs text-slate-500">MRP</span>
 
-                          <span className="text-gray-400 line-through">
+                          <span className="text-xs text-slate-400 line-through">
                             ৳ {mrpPrice.toFixed(2)}
                           </span>
                         </div>
 
-                        {/* DISCOUNT */}
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-slate-500">
+                            Discount
+                          </span>
 
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className="text-gray-600">Discount</span>
-
-                          <span
-                            className="
-                              rounded-full
-                              bg-red-100
-                              px-3
-                              py-1
-                              text-sm
-                              font-bold
-                              text-red-600
-                            "
-                          >
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-600">
                             {discount}% OFF
                           </span>
                         </div>
 
-                        {/* SELLING PRICE */}
-
-                        <div
-                          className="
-                            mt-3
-                            flex
-                            items-center
-                            justify-between
-                            border-t
-                            pt-3
-                          "
-                        >
-                          <span className="font-semibold text-gray-700">
-                            Selling Price
+                        <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
+                          <span className="text-sm font-bold text-slate-700">
+                            Price
                           </span>
 
-                          <span className="text-2xl font-black text-green-600">
+                          <span className="text-xl font-black text-green-600">
                             ৳ {sellingPrice.toFixed(2)}
                           </span>
                         </div>
@@ -1083,17 +796,15 @@ function AllItemMedicine() {
 
                       {/* QUANTITY */}
 
-                      <div className="mt-5 flex items-center justify-center gap-4">
-                        {/* MINUS */}
-
+                      <div className="mt-4 flex items-center justify-center gap-4">
                         <button
                           type="button"
                           onClick={() => decreaseQty(medicine)}
                           disabled={isOutOfStock || quantity <= 1}
                           className="
                             flex
-                            h-10
-                            w-10
+                            h-9
+                            w-9
                             items-center
                             justify-center
                             rounded-full
@@ -1101,32 +812,15 @@ function AllItemMedicine() {
                             text-white
                             transition
                             hover:bg-red-600
-                            disabled:cursor-not-allowed
-                            disabled:bg-gray-300
+                            disabled:bg-slate-300
                           "
                         >
                           <FaMinus />
                         </button>
 
-                        {/* QUANTITY */}
-
-                        <span
-                          className="
-                            flex
-                            h-10
-                            w-12
-                            items-center
-                            justify-center
-                            rounded-lg
-                            border
-                            bg-gray-50
-                            font-bold
-                          "
-                        >
+                        <span className="flex h-9 w-12 items-center justify-center rounded-lg border bg-slate-50 font-bold text-slate-700">
                           {quantity}
                         </span>
-
-                        {/* PLUS */}
 
                         <button
                           type="button"
@@ -1134,8 +828,8 @@ function AllItemMedicine() {
                           disabled={isOutOfStock || quantity >= stock}
                           className="
                             flex
-                            h-10
-                            w-10
+                            h-9
+                            w-9
                             items-center
                             justify-center
                             rounded-full
@@ -1143,22 +837,21 @@ function AllItemMedicine() {
                             text-white
                             transition
                             hover:bg-green-700
-                            disabled:cursor-not-allowed
-                            disabled:bg-gray-400
+                            disabled:bg-slate-300
                           "
                         >
                           <FaPlus />
                         </button>
                       </div>
 
-                      {/* ADD CART */}
+                      {/* CART */}
 
                       <button
                         type="button"
                         onClick={() => handleAddToCart(medicine)}
                         disabled={isOutOfStock}
                         className="
-                          mt-5
+                          mt-4
                           flex
                           w-full
                           items-center
@@ -1167,12 +860,14 @@ function AllItemMedicine() {
                           rounded-xl
                           bg-blue-600
                           py-3
+                          text-sm
                           font-bold
                           text-white
+                          shadow-md
                           transition
                           hover:bg-blue-700
-                          disabled:cursor-not-allowed
-                          disabled:bg-gray-400
+                          hover:shadow-lg
+                          disabled:bg-slate-400
                         "
                       >
                         <FaShoppingCart />
