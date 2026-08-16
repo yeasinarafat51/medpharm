@@ -449,9 +449,9 @@ function AllItemMedicine() {
             </p>
           </div>
 
-          <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+          {/* <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
             {medicines.length} Medicines
-          </div>
+          </div> */}
         </div>
 
         {/* =================================================
