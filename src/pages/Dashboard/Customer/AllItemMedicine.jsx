@@ -58,6 +58,18 @@ function AllItemMedicine() {
       value: "Square",
     },
     {
+      name: "Aci",
+      value: "Aci",
+    },
+    {
+      name: "Popular",
+      value: "Popular",
+    },
+    {
+      name: "Ibn-Sina",
+      value: "Ibnsina",
+    },
+    {
       name: "SKF",
       value: "SKF",
     },

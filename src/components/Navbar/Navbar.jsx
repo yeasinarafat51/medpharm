@@ -133,7 +133,7 @@ function Navbar() {
         <nav className="hidden items-center gap-6 md:flex">
           {/* All Medicines */}
 
-          <NavLink to="/" className={navLinkClass}>
+          <NavLink to="/allproduct" className={navLinkClass}>
             All Medicines
           </NavLink>
 
@@ -281,7 +281,7 @@ function Navbar() {
             {/* All Medicines */}
 
             <NavLink
-              to="/"
+              to="/allproduct"
               onClick={closeMenu}
               className="border-b px-6 py-4 font-medium text-gray-700 hover:bg-gray-50"
             >

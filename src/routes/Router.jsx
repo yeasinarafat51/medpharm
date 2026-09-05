@@ -12,6 +12,7 @@ import ForgotPassword from "../pages/ForgotPassword/ForgotPassword";
 import AddMedicine from "../pages/Dashboard/Admin/AddMedicine";
 import AllMedicine from "../pages/Dashboard/Admin/AllMedicine";
 import UpdateMedicine from "../pages/Dashboard/Admin/UpdateMedicine";
+import SliderManagement from "../pages/Dashboard/Admin/SliderManagement";
 import AllItemMedicine from "../pages/Dashboard/Customer/AllItemMedicine";
 import AllOrders from "../pages/Dashboard/Admin/AllOrders";
 import MyOrders from "../pages/Dashboard/Customer/MyOrders";
@@ -24,6 +25,7 @@ import MyInvoices from "../pages/Dashboard/Customer/MyInvoices";
 import InvoiceDetails from "../pages/Dashboard/Customer/InvoiceDetails";
 import Cart from "../pages/Cart/Cart";
 import Checkout from "../pages/Checkout/Checkout";
+import Mainbody from "../components/Home/Mainbody";
 // import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
   {
@@ -33,6 +35,10 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
+        element: <Mainbody />,
+      },
+      {
+        path: "allproduct",
         element: <AllItemMedicine />,
       },
       {
@@ -97,6 +103,10 @@ const router = createBrowserRouter([
       {
         path: "add-medicine",
         element: <AddMedicine />,
+      },
+      {
+        path: "sliders",
+        element: <SliderManagement />,
       },
       {
         path: "all-medicine",
