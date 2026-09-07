@@ -1,9 +1,9 @@
-// import HeroSlider from "./HeroSlider";
+import HeroSlider from "./HeroSlider";
 import AllitemMedicine from "../../pages/Dashboard/Customer/AllItemMedicine";
 const Mainbody = () => {
   return (
     <div>
-      {/* <HeroSlider /> */}
+      <HeroSlider />
       <AllitemMedicine />
     </div>
   );

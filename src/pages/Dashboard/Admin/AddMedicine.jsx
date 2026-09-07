@@ -24,50 +24,110 @@ function AddMedicine() {
 
   const image = watch("image");
 
-  // const purchasePrice = Number(watch("purchasePrice")) || 0;
-  // const profitPercent = Number(watch("profitPercent")) || 0;
-  const mrpePrice = Number(watch("mrpePrice")) || 0;
-  const bikriPercent = Number(watch("bikriPercent")) || 0;
-
-  const sellingPrice = mrpePrice - (mrpePrice * bikriPercent) / 100;
+  // =========================
+  // PRICE STATES
+  // =========================
+  const [mrpePrice, setMrpePrice] = useState("");
+  const [bikriPercent, setBikriPercent] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [profitPercent, setProfitPercent] = useState("");
+  const [stock, setStock] = useState("");
+  const [boxQuantity, setBoxQuantity] = useState("");
 
   const [loading, setLoading] = useState(false);
 
+  // =========================
+  // SELLING PRICE
+  // =========================
+  const mrpNumber = parseFloat(mrpePrice) || 0;
+  const bikriNumber = parseFloat(bikriPercent) || 0;
+
+  const sellingPrice = mrpNumber - (mrpNumber * bikriNumber) / 100;
+
+  // =========================
+  // DECIMAL INPUT HANDLER
+  // =========================
+  const handleDecimalChange = (value, setter) => {
+    // Empty value allow
+    if (value === "") {
+      setter("");
+      return;
+    }
+
+    // শুধু number এবং decimal point allow
+    if (/^\d*\.?\d*$/.test(value)) {
+      setter(value);
+    }
+  };
+
+  // =========================
+  // SUBMIT
+  // =========================
   const onSubmit = async (data) => {
     try {
       setLoading(true);
 
-      data.purchasePrice = Number(data.purchasePrice);
-      data.mrpePrice = Number(data.mrpePrice); // ✅ ঠিক
-      data.profitPercent = Number(data.profitPercent);
-      data.bikriPercent = Number(data.bikriPercent);
-      data.stock = Number(data.stock);
-      data.boxQuantity = Number(data.boxQuantity);
-      data.sellingPrice = Number(sellingPrice.toFixed(2));
+      const medicineData = {
+        ...data,
 
-      console.log(data);
+        purchasePrice: parseFloat(purchasePrice) || 0,
+
+        mrpePrice: parseFloat(mrpePrice) || 0,
+
+        profitPercent: parseFloat(profitPercent) || 0,
+
+        bikriPercent: parseFloat(bikriPercent) || 0,
+
+        stock: parseInt(stock) || 0,
+
+        boxQuantity: parseInt(boxQuantity) || 0,
+
+        sellingPrice: Number(sellingPrice.toFixed(2)),
+      };
+
+      console.log("Medicine Data:", medicineData);
 
       await axios.post(
         "https://medpharm-server-sgs6.vercel.app/api/medicines",
-        data,
+        medicineData,
       );
 
       Swal.fire({
         icon: "success",
         title: "Medicine Added Successfully",
+        text: "Medicine successfully added!",
+        timer: 2000,
+        showConfirmButton: false,
       });
 
+      // Reset react-hook-form
       reset();
+
+      // Reset custom states
+      setPurchasePrice("");
+      setMrpePrice("");
+      setBikriPercent("");
+      setProfitPercent("");
+      setStock("");
+      setBoxQuantity("");
     } catch (error) {
-      console.log(error);
+      console.error("Add Medicine Error:", error);
+
+      Swal.fire({
+        icon: "error",
+        title: "Failed!",
+        text: error.response?.data?.message || "Medicine add করা যায়নি!",
+      });
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className="mx-auto max-w-7xl rounded-3xl border border-gray-200 bg-white p-8 shadow-2xl">
-      {/* Header */}
-
+      {/* =========================
+          HEADER
+      ========================= */}
       <div className="mb-10 flex flex-col gap-3 border-b border-gray-200 pb-6">
         <h1 className="text-4xl font-bold text-slate-800">
           💊 Add New Medicine
@@ -78,12 +138,16 @@ function AddMedicine() {
         </p>
       </div>
 
+      {/* =========================
+          FORM
+      ========================= */}
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="grid grid-cols-1 gap-7 lg:grid-cols-2"
       >
-        {/* Medicine Name */}
-
+        {/* =========================
+            MEDICINE NAME
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaCapsules className="text-blue-600" />
@@ -106,8 +170,9 @@ function AddMedicine() {
           )}
         </div>
 
-        {/* Generic Name */}
-
+        {/* =========================
+            GENERIC NAME
+        ========================= */}
         <div>
           <label className="mb-2 font-semibold text-gray-700">
             Generic Name
@@ -121,8 +186,9 @@ function AddMedicine() {
           />
         </div>
 
-        {/* Company */}
-
+        {/* =========================
+            COMPANY
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaBuilding className="text-blue-600" />
@@ -137,8 +203,9 @@ function AddMedicine() {
           />
         </div>
 
-        {/* Category */}
-
+        {/* =========================
+            CATEGORY
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaTags className="text-blue-600" />
@@ -159,8 +226,9 @@ function AddMedicine() {
           </select>
         </div>
 
-        {/* Strength */}
-
+        {/* =========================
+            STRENGTH
+        ========================= */}
         <div>
           <label className="mb-2 font-semibold text-gray-700">Strength</label>
 
@@ -172,10 +240,9 @@ function AddMedicine() {
           />
         </div>
 
-        {/* Purchase */}
-
-        {/* Purchase Price */}
-
+        {/* =========================
+            PURCHASE PRICE
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaMoneyBillWave className="text-green-600" />
@@ -183,56 +250,85 @@ function AddMedicine() {
           </label>
 
           <input
-            type="number"
-            placeholder="100"
+            type="text"
+            inputMode="decimal"
+            value={purchasePrice}
+            onChange={(e) =>
+              handleDecimalChange(e.target.value, setPurchasePrice)
+            }
+            placeholder="100.50"
             className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
-            {...register("purchasePrice")}
           />
         </div>
-        {/* mrp Price */}
+
+        {/* =========================
+            MRP PRICE
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaMoneyBillWave className="text-green-600" />
-            Mrp Price
+            MRP Price
           </label>
 
           <input
-            type="number"
-            placeholder="100"
+            type="text"
+            inputMode="decimal"
+            value={mrpePrice}
+            onChange={(e) => handleDecimalChange(e.target.value, setMrpePrice)}
+            placeholder="100.50"
             className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
-            {...register("mrpePrice")}
           />
+
+          <p className="mt-1 text-xs text-gray-400">Example: 100.50</p>
         </div>
-        {/* bikri % */}
+
+        {/* =========================
+            BIKRI PERCENTAGE
+        ========================= */}
         <div>
           <label className="mb-2 font-semibold text-gray-700">
-            bikri Percentage (%)
+            Bikri Percentage (%)
           </label>
 
           <input
-            type="number"
-            placeholder="20"
+            type="text"
+            inputMode="decimal"
+            value={bikriPercent}
+            onChange={(e) =>
+              handleDecimalChange(e.target.value, setBikriPercent)
+            }
+            placeholder="10.5"
             className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
-            {...register("bikriPercent")}
           />
-        </div>
-        {/* Profit */}
 
+          <p className="mt-1 text-xs text-gray-400">Example: 10.5% / 12.75%</p>
+        </div>
+
+        {/* =========================
+            PROFIT PERCENTAGE
+        ========================= */}
         <div>
           <label className="mb-2 font-semibold text-gray-700">
             Profit Percentage (%)
           </label>
 
           <input
-            type="number"
-            placeholder="20"
+            type="text"
+            inputMode="decimal"
+            value={profitPercent}
+            onChange={(e) =>
+              handleDecimalChange(e.target.value, setProfitPercent)
+            }
+            placeholder="20.5"
             className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-100"
-            {...register("profitPercent")}
           />
+
+          <p className="mt-1 text-xs text-gray-400">Example: 20.5%</p>
         </div>
 
-        {/* Selling Price */}
-
+        {/* =========================
+            SELLING PRICE
+        ========================= */}
         <div className="rounded-2xl border border-green-200 bg-gradient-to-r from-green-50 to-green-100 p-6 shadow">
           <p className="text-gray-500">Selling Price</p>
 
@@ -241,10 +337,13 @@ function AddMedicine() {
           </h2>
 
           <p className="mt-2 text-sm text-green-600">Auto Calculated</p>
+
+          <p className="mt-2 text-xs text-gray-500">MRP − Bikri Discount</p>
         </div>
 
-        {/* Stock */}
-
+        {/* =========================
+            STOCK
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaBoxes className="text-blue-600" />
@@ -252,30 +351,44 @@ function AddMedicine() {
           </label>
 
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            value={stock}
+            onChange={(e) => {
+              if (/^\d*$/.test(e.target.value)) {
+                setStock(e.target.value);
+              }
+            }}
             placeholder="100"
             className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-            {...register("stock")}
           />
         </div>
 
-        {/* Box Quantity */}
-
+        {/* =========================
+            BOX QUANTITY
+        ========================= */}
         <div>
           <label className="mb-2 font-semibold text-gray-700">
             Box Quantity
           </label>
 
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            value={boxQuantity}
+            onChange={(e) => {
+              if (/^\d*$/.test(e.target.value)) {
+                setBoxQuantity(e.target.value);
+              }
+            }}
             placeholder="10"
             className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-            {...register("boxQuantity")}
           />
         </div>
 
-        {/* Expire Date */}
-
+        {/* =========================
+            EXPIRE DATE
+        ========================= */}
         <div>
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaCalendarAlt className="text-red-500" />
@@ -289,8 +402,9 @@ function AddMedicine() {
           />
         </div>
 
-        {/* Image URL */}
-
+        {/* =========================
+            IMAGE URL
+        ========================= */}
         <div className="lg:col-span-2">
           <label className="mb-2 flex items-center gap-2 font-semibold text-gray-700">
             <FaImage className="text-purple-600" />
@@ -305,8 +419,9 @@ function AddMedicine() {
           />
         </div>
 
-        {/* Image Preview */}
-
+        {/* =========================
+            IMAGE PREVIEW
+        ========================= */}
         <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-6">
           <h3 className="mb-5 text-xl font-semibold">Medicine Preview</h3>
 
@@ -315,12 +430,17 @@ function AddMedicine() {
               src={image || "https://placehold.co/400x300?text=Medicine+Image"}
               alt="Medicine Preview"
               className="h-64 w-64 rounded-xl border bg-white object-contain p-4 shadow"
+              onError={(e) => {
+                e.currentTarget.src =
+                  "https://placehold.co/400x300?text=Medicine+Image";
+              }}
             />
           </div>
         </div>
 
-        {/* Description */}
-
+        {/* =========================
+            DESCRIPTION
+        ========================= */}
         <div className="lg:col-span-2">
           <label className="mb-2 block font-semibold text-gray-700">
             Description
@@ -334,8 +454,9 @@ function AddMedicine() {
           />
         </div>
 
-        {/* Submit */}
-
+        {/* =========================
+            SUBMIT
+        ========================= */}
         <div className="lg:col-span-2">
           <button
             type="submit"
