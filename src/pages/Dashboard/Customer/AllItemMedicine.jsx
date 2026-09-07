@@ -70,6 +70,10 @@ function AllItemMedicine() {
       value: "Ibnsina",
     },
     {
+      name: "Opsonin",
+      value: "Opsonin",
+    },
+    {
       name: "SKF",
       value: "SKF",
     },
