@@ -27,18 +27,10 @@ const initialForm = {
 
 function SliderManagement() {
   const [sliders, setSliders] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [saving, setSaving] = useState(false);
-
   const [editingId, setEditingId] = useState(null);
-
   const [form, setForm] = useState(initialForm);
-
-  // =====================================================
-  // LOAD
-  // =====================================================
 
   const loadSliders = async () => {
     try {
@@ -48,12 +40,12 @@ function SliderManagement() {
 
       setSliders(res.data?.sliders || []);
     } catch (error) {
-      console.error(error);
+      console.error("Load Slider Error:", error);
 
       Swal.fire({
         icon: "error",
         title: "Failed",
-        text: "Unable to load sliders",
+        text: error?.response?.data?.message || "Unable to load sliders",
       });
     } finally {
       setLoading(false);
@@ -64,10 +56,6 @@ function SliderManagement() {
     loadSliders();
   }, []);
 
-  // =====================================================
-  // INPUT
-  // =====================================================
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -77,26 +65,24 @@ function SliderManagement() {
     }));
   };
 
-  // =====================================================
-  // SUBMIT
-  // =====================================================
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!form.title.trim()) {
-      return Swal.fire("Required", "Slider title is required", "warning");
-    }
-
-    if (!form.image.trim()) {
-      return Swal.fire("Required", "Slider image URL is required", "warning");
-    }
 
     try {
       setSaving(true);
 
+      const sliderData = {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        image: form.image.trim(),
+        buttonText: form.buttonText.trim(),
+        buttonLink: form.buttonLink.trim(),
+        isActive: form.isActive,
+        order: Number(form.order) || 1,
+      };
+
       if (editingId) {
-        await axios.put(`${API_URL}/api/sliders/${editingId}`, form);
+        await axios.put(`${API_URL}/api/sliders/${editingId}`, sliderData);
 
         Swal.fire({
           icon: "success",
@@ -105,7 +91,7 @@ function SliderManagement() {
           showConfirmButton: false,
         });
       } else {
-        await axios.post(`${API_URL}/api/sliders`, form);
+        await axios.post(`${API_URL}/api/sliders`, sliderData);
 
         Swal.fire({
           icon: "success",
@@ -116,26 +102,24 @@ function SliderManagement() {
       }
 
       setForm(initialForm);
-
       setEditingId(null);
 
-      loadSliders();
+      await loadSliders();
     } catch (error) {
-      console.error(error);
+      console.error("Save Slider Error:", error);
 
       Swal.fire({
         icon: "error",
         title: "Failed",
-        text: error?.response?.data?.message || error.message,
+        text:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Something went wrong",
       });
     } finally {
       setSaving(false);
     }
   };
-
-  // =====================================================
-  // EDIT
-  // =====================================================
 
   const handleEdit = (slider) => {
     setEditingId(slider._id);
@@ -156,19 +140,10 @@ function SliderManagement() {
     });
   };
 
-  // =====================================================
-  // CANCEL
-  // =====================================================
-
   const cancelEdit = () => {
     setEditingId(null);
-
     setForm(initialForm);
   };
-
-  // =====================================================
-  // DELETE
-  // =====================================================
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
@@ -178,6 +153,7 @@ function SliderManagement() {
       showCancelButton: true,
       confirmButtonText: "Delete",
       cancelButtonText: "Cancel",
+      confirmButtonColor: "#dc2626",
     });
 
     if (!result.isConfirmed) return;
@@ -192,40 +168,50 @@ function SliderManagement() {
         showConfirmButton: false,
       });
 
-      loadSliders();
+      await loadSliders();
     } catch (error) {
+      console.error("Delete Slider Error:", error);
+
       Swal.fire({
         icon: "error",
         title: "Delete Failed",
-        text: error.message,
+        text:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to delete slider",
       });
     }
   };
-
-  // =====================================================
-  // TOGGLE
-  // =====================================================
 
   const handleToggle = async (id) => {
     try {
       await axios.patch(`${API_URL}/api/sliders/${id}/toggle`);
 
-      loadSliders();
+      await loadSliders();
     } catch (error) {
+      console.error("Toggle Slider Error:", error);
+
       Swal.fire({
         icon: "error",
         title: "Failed",
-        text: error.message,
+        text:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to change slider status",
       });
+    }
+  };
+
+  const handleImageError = (e) => {
+    e.currentTarget.style.display = "none";
+
+    if (e.currentTarget.nextElementSibling) {
+      e.currentTarget.nextElementSibling.style.display = "flex";
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-5 lg:p-8">
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl text-white shadow-lg">
           <FaImages />
@@ -242,10 +228,6 @@ function SliderManagement() {
         </div>
       </div>
 
-      {/* =================================================
-          FORM
-      ================================================= */}
-
       <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-800">
@@ -256,7 +238,7 @@ function SliderManagement() {
             <button
               type="button"
               onClick={cancelEdit}
-              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200"
+              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
             >
               <FaTimes />
               Cancel
@@ -265,14 +247,13 @@ function SliderManagement() {
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-          {/* TITLE */}
-
           <div>
             <label className="mb-1 block text-sm font-semibold text-gray-700">
               Slider Title
             </label>
 
             <input
+              type="text"
               name="title"
               value={form.title}
               onChange={handleChange}
@@ -281,23 +262,27 @@ function SliderManagement() {
             />
           </div>
 
-          {/* IMAGE */}
-
           <div>
             <label className="mb-1 block text-sm font-semibold text-gray-700">
               Image URL
+              <span className="ml-2 rounded-full bg-gray-100 px-2 py-1 text-xs font-normal text-gray-500">
+                Optional
+              </span>
             </label>
 
             <input
+              type="text"
               name="image"
               value={form.image}
               onChange={handleChange}
               placeholder="https://example.com/banner.jpg"
               className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
-          </div>
 
-          {/* DESCRIPTION */}
+            <p className="mt-1 text-xs text-gray-400">
+              Image URL না দিলেও Slider Add করা যাবে।
+            </p>
+          </div>
 
           <div className="md:col-span-2">
             <label className="mb-1 block text-sm font-semibold text-gray-700">
@@ -314,23 +299,20 @@ function SliderManagement() {
             />
           </div>
 
-          {/* BUTTON TEXT */}
-
           <div>
             <label className="mb-1 block text-sm font-semibold text-gray-700">
               Button Text
             </label>
 
             <input
+              type="text"
               name="buttonText"
               value={form.buttonText}
               onChange={handleChange}
-              placeholder="Shop Now"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              placeholder=""
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
-
-          {/* BUTTON LINK */}
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-gray-700">
@@ -338,15 +320,14 @@ function SliderManagement() {
             </label>
 
             <input
+              type="text"
               name="buttonLink"
               value={form.buttonLink}
               onChange={handleChange}
-              placeholder="/all-medicines"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              placeholder="/allproduct"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
-
-          {/* ORDER */}
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-gray-700">
@@ -359,11 +340,9 @@ function SliderManagement() {
               value={form.order}
               onChange={handleChange}
               min="1"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
-
-          {/* ACTIVE */}
 
           <div className="flex items-center">
             <label className="flex cursor-pointer items-center gap-3">
@@ -378,8 +357,6 @@ function SliderManagement() {
               <span className="font-semibold text-gray-700">Active Slider</span>
             </label>
           </div>
-
-          {/* BUTTON */}
 
           <div className="md:col-span-2">
             <button
@@ -403,14 +380,12 @@ function SliderManagement() {
         </form>
       </div>
 
-      {/* =================================================
-          SLIDER LIST
-      ================================================= */}
-
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {loading ? (
           <div className="col-span-full py-20 text-center">
-            Loading sliders...
+            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+
+            <p className="text-gray-500">Loading sliders...</p>
           </div>
         ) : sliders.length === 0 ? (
           <div className="col-span-full rounded-2xl bg-white py-20 text-center shadow-sm">
@@ -419,6 +394,10 @@ function SliderManagement() {
             <h3 className="mt-4 text-xl font-bold text-gray-700">
               No Sliders Found
             </h3>
+
+            <p className="mt-2 text-sm text-gray-400">
+              Add your first homepage slider.
+            </p>
           </div>
         ) : (
           sliders.map((slider) => (
@@ -426,14 +405,37 @@ function SliderManagement() {
               key={slider._id}
               className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
-              {/* IMAGE */}
+              <div className="relative h-48 w-full bg-gray-100">
+                {slider.image ? (
+                  <>
+                    <img
+                      src={slider.image}
+                      alt={slider.title || "Slider"}
+                      onError={handleImageError}
+                      className="h-48 w-full object-cover"
+                    />
 
-              <div className="relative">
-                <img
-                  src={slider.image}
-                  alt={slider.title}
-                  className="h-48 w-full object-cover"
-                />
+                    <div className="hidden h-48 w-full items-center justify-center bg-gray-100">
+                      <div className="text-center">
+                        <FaImages className="mx-auto text-4xl text-gray-300" />
+
+                        <p className="mt-2 text-sm text-gray-400">
+                          Image unavailable
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-48 w-full items-center justify-center bg-gray-100">
+                    <div className="text-center">
+                      <FaImages className="mx-auto text-4xl text-gray-300" />
+
+                      <p className="mt-2 text-sm font-medium text-gray-400">
+                        No Image
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <span
                   className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white ${
@@ -444,30 +446,46 @@ function SliderManagement() {
                 </span>
               </div>
 
-              {/* CONTENT */}
-
               <div className="p-5">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex items-center justify-between gap-3">
                   <h3 className="line-clamp-1 text-lg font-black text-gray-800">
-                    {slider.title}
+                    {slider.title || "Untitled Slider"}
                   </h3>
 
-                  <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600">
-                    #{slider.order}
+                  <span className="shrink-0 rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600">
+                    #{slider.order || 1}
                   </span>
                 </div>
 
-                <p className="line-clamp-2 text-sm text-gray-500">
-                  {slider.description}
+                <p className="line-clamp-2 min-h-[40px] text-sm text-gray-500">
+                  {slider.description || "No description available."}
                 </p>
 
-                {/* ACTIONS */}
+                {slider.buttonText && (
+                  <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-400">Button</p>
+
+                    <p className="text-sm font-semibold text-gray-700">
+                      {slider.buttonText}
+                    </p>
+                  </div>
+                )}
+
+                {slider.buttonLink && (
+                  <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-400">Link</p>
+
+                    <p className="truncate text-sm font-medium text-gray-600">
+                      {slider.buttonLink}
+                    </p>
+                  </div>
+                )}
 
                 <div className="mt-5 grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => handleToggle(slider._id)}
-                    className="flex items-center justify-center gap-1 rounded-lg bg-gray-100 py-2 text-xs font-bold text-gray-700 hover:bg-gray-200"
+                    className="flex items-center justify-center gap-1 rounded-lg bg-gray-100 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200"
                   >
                     {slider.isActive ? <FaEyeSlash /> : <FaEye />}
 
@@ -477,7 +495,7 @@ function SliderManagement() {
                   <button
                     type="button"
                     onClick={() => handleEdit(slider)}
-                    className="flex items-center justify-center gap-1 rounded-lg bg-blue-50 py-2 text-xs font-bold text-blue-600 hover:bg-blue-100"
+                    className="flex items-center justify-center gap-1 rounded-lg bg-blue-50 py-2 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
                   >
                     <FaEdit />
                     Edit
@@ -486,7 +504,7 @@ function SliderManagement() {
                   <button
                     type="button"
                     onClick={() => handleDelete(slider._id)}
-                    className="flex items-center justify-center gap-1 rounded-lg bg-red-50 py-2 text-xs font-bold text-red-600 hover:bg-red-100"
+                    className="flex items-center justify-center gap-1 rounded-lg bg-red-50 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100"
                   >
                     <FaTrash />
                     Delete

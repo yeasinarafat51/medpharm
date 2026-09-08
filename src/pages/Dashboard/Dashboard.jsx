@@ -118,6 +118,14 @@ function Dashboard() {
             Add Medicine
           </NavLink>
           <NavLink
+            to="/dashboard/special-offers"
+            className={menuClass}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <FaCapsules />
+            Add Special-offers
+          </NavLink>
+          <NavLink
             to="/dashboard/sliders"
             className={menuClass}
             onClick={() => setSidebarOpen(false)}

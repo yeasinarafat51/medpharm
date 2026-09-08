@@ -4,7 +4,7 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaShoppingBag,
-  FaCircle,
+  FaImages,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
@@ -16,57 +16,128 @@ function HeroSlider() {
   const [loading, setLoading] = useState(true);
 
   // =====================================================
-  // LOAD SLIDERS
+  // LOAD ACTIVE SLIDERS
   // =====================================================
 
   useEffect(() => {
+    let mounted = true;
+
     const loadSliders = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/sliders/active`, {
           timeout: 20000,
         });
 
-        if (Array.isArray(res.data?.sliders)) {
-          setSliders(res.data.sliders);
-        }
+        if (!mounted) return;
+
+        const sliderData = Array.isArray(res.data?.sliders)
+          ? res.data.sliders
+          : [];
+
+        setSliders(sliderData);
       } catch (error) {
         console.error("Slider Load Error:", error);
+
+        if (mounted) {
+          setSliders([]);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadSliders();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  // =====================================================
+  // RESET CURRENT INDEX
+  // =====================================================
+
+  useEffect(() => {
+    if (sliders.length === 0) {
+      setCurrent(0);
+      return;
+    }
+
+    if (current >= sliders.length) {
+      setCurrent(0);
+    }
+  }, [sliders.length, current]);
 
   // =====================================================
   // AUTO SLIDE
   // =====================================================
 
   useEffect(() => {
-    if (sliders.length <= 1) return;
+    if (sliders.length <= 1) {
+      return;
+    }
 
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % sliders.length);
+      setCurrent((prev) => {
+        return (prev + 1) % sliders.length;
+      });
     }, 5000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+    };
   }, [sliders.length]);
 
   // =====================================================
-  // NEXT
+  // NEXT SLIDE
   // =====================================================
 
   const nextSlide = () => {
-    setCurrent((prev) => (prev + 1) % sliders.length);
+    if (sliders.length <= 1) {
+      return;
+    }
+
+    setCurrent((prev) => {
+      return (prev + 1) % sliders.length;
+    });
   };
 
   // =====================================================
-  // PREVIOUS
+  // PREVIOUS SLIDE
   // =====================================================
 
   const previousSlide = () => {
-    setCurrent((prev) => (prev - 1 + sliders.length) % sliders.length);
+    if (sliders.length <= 1) {
+      return;
+    }
+
+    setCurrent((prev) => {
+      return (prev - 1 + sliders.length) % sliders.length;
+    });
+  };
+
+  // =====================================================
+  // GO TO SLIDE
+  // =====================================================
+
+  const goToSlide = (index) => {
+    setCurrent(index);
+  };
+
+  // =====================================================
+  // IMAGE ERROR
+  // =====================================================
+
+  const handleImageError = (e) => {
+    e.currentTarget.style.display = "none";
+
+    const placeholder = e.currentTarget.nextElementSibling;
+
+    if (placeholder) {
+      placeholder.style.display = "flex";
+    }
   };
 
   // =====================================================
@@ -75,8 +146,10 @@ function HeroSlider() {
 
   if (loading) {
     return (
-      <section className="mx-auto w-full max-w-7xl px-3 py-4">
-        <div className="h-[220px] animate-pulse rounded-3xl bg-gray-200 sm:h-[320px] lg:h-[450px]" />
+      <section className="w-full bg-gray-50 py-3 sm:py-5">
+        <div className="mx-auto max-w-7xl px-3 sm:px-5">
+          <div className="h-[230px] animate-pulse rounded-2xl bg-gray-200 sm:h-[340px] sm:rounded-3xl lg:h-[460px]" />
+        </div>
       </section>
     );
   }
@@ -85,11 +158,30 @@ function HeroSlider() {
   // NO SLIDER
   // =====================================================
 
-  if (!sliders.length) {
+  if (sliders.length === 0) {
     return null;
   }
 
-  const slider = sliders[current];
+  // =====================================================
+  // CURRENT SLIDER
+  // =====================================================
+
+  const slider = sliders[current] || {};
+
+  const image = typeof slider.image === "string" ? slider.image.trim() : "";
+
+  const title = typeof slider.title === "string" ? slider.title : "";
+
+  const description =
+    typeof slider.description === "string" ? slider.description : "";
+
+  const buttonText =
+    typeof slider.buttonText === "string" ? slider.buttonText : "";
+
+  const buttonLink =
+    typeof slider.buttonLink === "string" && slider.buttonLink.trim()
+      ? slider.buttonLink
+      : "/all-medicines";
 
   return (
     <section className="w-full bg-gray-50 py-3 sm:py-5">
@@ -99,17 +191,76 @@ function HeroSlider() {
               IMAGE
           ================================================= */}
 
-          <img
-            src={slider.image}
-            alt={slider.title}
-            className="
-              h-[230px]
-              w-full
-              object-cover
-              sm:h-[340px]
-              lg:h-[460px]
-            "
-          />
+          {image ? (
+            <>
+              <img
+                src={image}
+                alt={title || "NovaCare Slider"}
+                onError={handleImageError}
+                className="
+                  h-[230px]
+                  w-full
+                  object-cover
+                  sm:h-[340px]
+                  lg:h-[460px]
+                "
+              />
+
+              {/* IMAGE ERROR PLACEHOLDER */}
+
+              <div
+                className="
+                  hidden
+                  h-[230px]
+                  w-full
+                  items-center
+                  justify-center
+                  bg-gradient-to-br
+                  from-blue-600
+                  via-blue-500
+                  to-cyan-500
+                  sm:h-[340px]
+                  lg:h-[460px]
+                "
+              >
+                <div className="text-center text-white">
+                  <FaImages className="mx-auto text-5xl opacity-70 sm:text-7xl" />
+
+                  <p className="mt-3 text-sm font-semibold opacity-80 sm:text-base">
+                    NovaCare
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* =================================================
+                NO IMAGE PLACEHOLDER
+            ================================================= */
+
+            <div
+              className="
+                flex
+                h-[230px]
+                w-full
+                items-center
+                justify-center
+                bg-gradient-to-br
+                from-blue-600
+                via-blue-500
+                to-cyan-500
+                sm:h-[340px]
+                lg:h-[460px]
+              "
+            >
+              <div className="text-center text-white">
+                <FaImages className="mx-auto text-5xl opacity-70 sm:text-7xl" />
+
+                <p className="mt-3 text-sm font-semibold opacity-80 sm:text-base">
+                  
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* =================================================
               DARK OVERLAY
@@ -123,23 +274,33 @@ function HeroSlider() {
 
           <div className="absolute inset-0 flex items-center">
             <div className="max-w-xl px-6 text-white sm:px-10 lg:px-16">
+              {/* BRAND */}
+
               <p className="mb-2 text-xs font-bold uppercase tracking-[3px] text-blue-200 sm:text-sm">
-                NovaCare
+                
               </p>
 
-              <h1 className="text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                {slider.title}
-              </h1>
+              {/* TITLE */}
 
-              {slider.description && (
+              {title && (
+                <h1 className="text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                  {title}
+                </h1>
+              )}
+
+              {/* DESCRIPTION */}
+
+              {description && (
                 <p className="mt-3 max-w-lg text-xs leading-5 text-gray-200 sm:text-base sm:leading-7">
-                  {slider.description}
+                  {description}
                 </p>
               )}
 
-              {slider.buttonText && (
+              {/* BUTTON */}
+
+              {buttonText && (
                 <Link
-                  to={slider.buttonLink || "/all-medicines"}
+                  to={buttonLink}
                   className="
                     mt-5
                     inline-flex
@@ -154,8 +315,8 @@ function HeroSlider() {
                     text-white
                     shadow-lg
                     transition
-                    hover:bg-blue-700
                     hover:scale-105
+                    hover:bg-blue-700
                     sm:px-6
                     sm:py-3
                     sm:text-sm
@@ -163,21 +324,26 @@ function HeroSlider() {
                 >
                   <FaShoppingBag />
 
-                  {slider.buttonText}
+                  {buttonText}
                 </Link>
               )}
             </div>
           </div>
 
           {/* =================================================
-              PREVIOUS
+              NAVIGATION
           ================================================= */}
 
           {sliders.length > 1 && (
             <>
+              {/* =================================================
+                  PREVIOUS BUTTON
+              ================================================= */}
+
               <button
                 type="button"
                 onClick={previousSlide}
+                aria-label="Previous slide"
                 className="
                   absolute
                   left-3
@@ -204,12 +370,13 @@ function HeroSlider() {
               </button>
 
               {/* =================================================
-                  NEXT
+                  NEXT BUTTON
               ================================================= */}
 
               <button
                 type="button"
                 onClick={nextSlide}
+                aria-label="Next slide"
                 className="
                   absolute
                   right-3
@@ -252,9 +419,10 @@ function HeroSlider() {
               >
                 {sliders.map((item, index) => (
                   <button
-                    key={item._id}
+                    key={item._id || index}
                     type="button"
-                    onClick={() => setCurrent(index)}
+                    onClick={() => goToSlide(index)}
+                    aria-label={`Go to slide ${index + 1}`}
                     className={`
                       h-2
                       rounded-full

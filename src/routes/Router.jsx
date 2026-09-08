@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { createBrowserRouter } from "react-router-dom";
 
 import MainLayout from "../layouts/MainLayout";
@@ -20,12 +21,14 @@ import DashboardHome from "../pages/Dashboard/Admin/DashboardHome";
 import Users from "../pages/Dashboard/Admin/Users";
 import SalesReport from "../pages/Dashboard/Admin/SalesReport";
 import AdminRoute from "./AdminRoute";
-import Unauthorized from "../pages/Unauthorized";
+// import SpecialOfferManagement from "../pages/SpecialOfferManagement";
 import MyInvoices from "../pages/Dashboard/Customer/MyInvoices";
 import InvoiceDetails from "../pages/Dashboard/Customer/InvoiceDetails";
 import Cart from "../pages/Cart/Cart";
 import Checkout from "../pages/Checkout/Checkout";
 import Mainbody from "../components/Home/Mainbody";
+import SpecialOfferManagement from "../pages/SpecialOfferManagement";
+// import Unauthorized from "./pages/Unauthorized";
 // import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
   {
@@ -81,10 +84,6 @@ const router = createBrowserRouter([
         path: "/invoice/:invoiceNo",
         element: <InvoiceDetails />,
       },
-      {
-        path: "/unauthorized",
-        element: <Unauthorized />,
-      },
     ],
   },
   {
@@ -103,6 +102,10 @@ const router = createBrowserRouter([
       {
         path: "add-medicine",
         element: <AddMedicine />,
+      },
+      {
+        path: "special-offers",
+        element: <SpecialOfferManagement />,
       },
       {
         path: "sliders",
