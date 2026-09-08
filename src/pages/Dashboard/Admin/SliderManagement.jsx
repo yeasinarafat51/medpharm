@@ -19,10 +19,10 @@ const initialForm = {
   title: "",
   description: "",
   image: "",
-  buttonText: "Shop Now",
-  buttonLink: "/all-medicines",
+  buttonText: "",
+  buttonLink: "",
   isActive: true,
-  order: 1,
+  order: "",
 };
 
 function SliderManagement() {
@@ -78,7 +78,7 @@ function SliderManagement() {
         buttonText: form.buttonText.trim(),
         buttonLink: form.buttonLink.trim(),
         isActive: form.isActive,
-        order: Number(form.order) || 1,
+        order: form.order === "" ? 0 : Number(form.order),
       };
 
       if (editingId) {
@@ -128,10 +128,11 @@ function SliderManagement() {
       title: slider.title || "",
       description: slider.description || "",
       image: slider.image || "",
-      buttonText: slider.buttonText || "Shop Now",
-      buttonLink: slider.buttonLink || "/all-medicines",
+      buttonText: slider.buttonText || "",
+      buttonLink: slider.buttonLink || "",
       isActive: slider.isActive !== false,
-      order: slider.order || 1,
+      order:
+        slider.order !== undefined && slider.order !== null ? slider.order : "",
     });
 
     window.scrollTo({
@@ -223,7 +224,7 @@ function SliderManagement() {
           </h1>
 
           <p className="text-sm text-gray-500">
-            Add, edit and manage NovaCare homepage sliders.
+            Add, edit and manage homepage sliders.
           </p>
         </div>
       </div>
@@ -280,7 +281,7 @@ function SliderManagement() {
             />
 
             <p className="mt-1 text-xs text-gray-400">
-              Image URL না দিলেও Slider Add করা যাবে।
+              Slider can be added without an image URL.
             </p>
           </div>
 
@@ -309,7 +310,7 @@ function SliderManagement() {
               name="buttonText"
               value={form.buttonText}
               onChange={handleChange}
-              placeholder=""
+              placeholder="Shop Now"
               className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -339,7 +340,8 @@ function SliderManagement() {
               name="order"
               value={form.order}
               onChange={handleChange}
-              min="1"
+              placeholder="1"
+              min="0"
               className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -453,7 +455,7 @@ function SliderManagement() {
                   </h3>
 
                   <span className="shrink-0 rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600">
-                    #{slider.order || 1}
+                    #{slider.order || 0}
                   </span>
                 </div>
 
