@@ -480,7 +480,7 @@ function AllItemMedicine() {
               <FaCapsules className="mx-auto text-6xl text-slate-300" />
 
               <h2 className="mt-4 text-2xl font-black text-slate-700">
-                No Medicine Found
+                Network problem
               </h2>
 
               <p className="mt-2 text-sm text-slate-500">
@@ -488,7 +488,7 @@ function AllItemMedicine() {
                   ? `No medicine found for ${selectedCompany}.`
                   : search
                     ? `No medicine found for "${search}".`
-                    : "There are no medicines available."}
+                    : "Waiting medicines available."}
               </p>
             </div>
           </div>

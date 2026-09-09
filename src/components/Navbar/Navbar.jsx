@@ -179,7 +179,7 @@ function Navbar() {
           {/* Dashboard */}
 
           {(role === "admin" || role === "super-admin") && (
-            <NavLink to="/dashboard" className={navLinkClass}>
+            <NavLink to="/dashboard/all-orders" className={navLinkClass}>
               Dashboard
             </NavLink>
           )}

@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 
 import MainLayout from "../layouts/MainLayout";
 
-import Home from "../pages/Home/Home";
+// import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
 import Dashboard from "../pages/Dashboard/Dashboard";
@@ -84,6 +84,11 @@ const router = createBrowserRouter([
         path: "/invoice/:invoiceNo",
         element: <InvoiceDetails />,
       },
+
+      // {
+      //   path: "/unauthorized",
+      //   element: <Unauthorized />,
+      // },
     ],
   },
   {
