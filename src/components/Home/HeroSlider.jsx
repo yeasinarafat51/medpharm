@@ -8,7 +8,7 @@ import {
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-const API_URL = "https://medpharm-server-sgs6.vercel.app";
+const API_URL = "https://medpharm-server-bz7t.vercel.app";
 
 function HeroSlider() {
   const [sliders, setSliders] = useState([]);
@@ -255,9 +255,7 @@ function HeroSlider() {
               <div className="text-center text-white">
                 <FaImages className="mx-auto text-5xl opacity-70 sm:text-7xl" />
 
-                <p className="mt-3 text-sm font-semibold opacity-80 sm:text-base">
-                  
-                </p>
+                <p className="mt-3 text-sm font-semibold opacity-80 sm:text-base"></p>
               </div>
             </div>
           )}
@@ -276,9 +274,7 @@ function HeroSlider() {
             <div className="max-w-xl px-6 text-white sm:px-10 lg:px-16">
               {/* BRAND */}
 
-              <p className="mb-2 text-xs font-bold uppercase tracking-[3px] text-blue-200 sm:text-sm">
-                
-              </p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[3px] text-blue-200 sm:text-sm"></p>
 
               {/* TITLE */}
 

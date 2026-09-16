@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import jsPDF from "jspdf";
 
-const API_URL = "https://medpharm-server-sgs6.vercel.app";
+const API_URL = "https://medpharm-server-bz7t.vercel.app";
 
 function InvoiceDetails() {
   const { id } = useParams();

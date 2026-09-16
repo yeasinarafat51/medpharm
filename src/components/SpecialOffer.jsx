@@ -3,7 +3,7 @@ import axios from "axios";
 import { FaClock, FaTag, FaShoppingCart } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-const API_URL = "https://medpharm-server-sgs6.vercel.app";
+const API_URL = "https://medpharm-server-bz7t.vercel.app";
 
 const SpecialOffer = () => {
   const [offers, setOffers] = useState([]);

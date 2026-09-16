@@ -24,7 +24,7 @@ function AllItemMedicine() {
   // API
   // =====================================================
 
-  const API_URL = "https://medpharm-server-sgs6.vercel.app";
+  const API_URL = "https://medpharm-server-bz7t.vercel.app";
 
   // =====================================================
   // STATES
@@ -488,7 +488,7 @@ function AllItemMedicine() {
                   ? `No medicine found for ${selectedCompany}.`
                   : search
                     ? `No medicine found for "${search}".`
-                    : "Waiting medicines available."}
+                    : "Waitin medicines available."}
               </p>
             </div>
           </div>

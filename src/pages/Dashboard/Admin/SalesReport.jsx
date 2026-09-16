@@ -3,7 +3,7 @@ import axios from "axios";
 import useAuth from "../../../hooks/useAuth";
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "https://medpharm-server-sgs6.vercel.app";
+  import.meta.env.VITE_API_URL || "https://medpharm-server-bz7t.vercel.app";
 
 function SalesReport() {
   const { user } = useAuth();

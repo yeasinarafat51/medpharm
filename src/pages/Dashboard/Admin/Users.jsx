@@ -47,7 +47,7 @@ function Users() {
       }
 
       const res = await axios.get(
-        `https://medpharm-server-sgs6.vercel.app/api/users?search=${encodeURIComponent(
+        `https://medpharm-server-bz7t.vercel.app/api/users?search=${encodeURIComponent(
           search.trim(),
         )}&page=${page}&limit=${limit}&sort=${sort}`,
       );
@@ -125,7 +125,7 @@ function Users() {
       if (!result.isConfirmed) return;
 
       const res = await axios.patch(
-        `https://medpharm-server-sgs6.vercel.app/api/users/${id}/role`,
+        `https://medpharm-server-bz7t.vercel.app/api/users/${id}/role`,
         {
           role: nextRole,
         },
@@ -177,7 +177,7 @@ function Users() {
 
     try {
       const res = await axios.delete(
-        `https://medpharm-server-sgs6.vercel.app/api/users/${id}`,
+        `https://medpharm-server-bz7t.vercel.app/api/users/${id}`,
       );
 
       if (res.data.success) {

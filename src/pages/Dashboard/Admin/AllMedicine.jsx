@@ -3,7 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { Link } from "react-router-dom";
 
-const API = "https://medpharm-server-sgs6.vercel.app";
+const API = "https://medpharm-server-bz7t.vercel.app";
 
 const companies = [
   { name: "All Medicines", value: "" },

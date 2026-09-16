@@ -20,6 +20,7 @@ import MyOrders from "../pages/Dashboard/Customer/MyOrders";
 import DashboardHome from "../pages/Dashboard/Admin/DashboardHome";
 import Users from "../pages/Dashboard/Admin/Users";
 import SalesReport from "../pages/Dashboard/Admin/SalesReport";
+import ProfitReport from "../pages/Dashboard/ProfitReport";
 import AdminRoute from "./AdminRoute";
 // import SpecialOfferManagement from "../pages/SpecialOfferManagement";
 import MyInvoices from "../pages/Dashboard/Customer/MyInvoices";
@@ -159,6 +160,10 @@ const router = createBrowserRouter([
       {
         path: "invoice/:id",
         element: <InvoiceDetails />,
+      },
+      {
+        path: "profit-report",
+        element: <ProfitReport />,
       },
       {
         path: "sales-report",

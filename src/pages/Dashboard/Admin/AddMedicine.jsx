@@ -88,7 +88,7 @@ function AddMedicine() {
       console.log("Medicine Data:", medicineData);
 
       await axios.post(
-        "https://medpharm-server-sgs6.vercel.app/api/medicines",
+        "https://medpharm-server-bz7t.vercel.app/api/medicines",
         medicineData,
       );
 

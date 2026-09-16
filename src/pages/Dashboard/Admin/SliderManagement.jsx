@@ -13,7 +13,7 @@ import {
   FaImages,
 } from "react-icons/fa";
 
-const API_URL = "https://medpharm-server-sgs6.vercel.app";
+const API_URL = "https://medpharm-server-bz7t.vercel.app";
 
 const initialForm = {
   title: "",

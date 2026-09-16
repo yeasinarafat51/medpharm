@@ -15,7 +15,7 @@ function MyInvoices() {
 
       try {
         const res = await axios.get(
-          `https://medpharm-server-sgs6.vercel.app/api/orders/my-orders/${user.email}`,
+          `https://medpharm-server-bz7t.vercel.app/api/orders/my-orders/${user.email}`,
         );
 
         if (res.data.success) {

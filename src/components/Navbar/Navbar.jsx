@@ -20,7 +20,6 @@ function Navbar() {
   // ==========================================
   // GET USER ROLE
   // ==========================================
-
   useEffect(() => {
     const getRole = async () => {
       if (!user?.email) {
@@ -30,7 +29,7 @@ function Navbar() {
 
       try {
         const res = await axios.get(
-          `https://medpharm-server-sgs6.vercel.app/api/users/email/${user.email}`,
+          `https://medpharm-server-bz7t.vercel.app/api/users/email/${user.email}`,
         );
 
         if (res.data.success) {
@@ -47,7 +46,6 @@ function Navbar() {
   // ==========================================
   // LOGOUT
   // ==========================================
-
   const handleLogout = async () => {
     try {
       await logoutUser();
@@ -66,18 +64,19 @@ function Navbar() {
   };
 
   // ==========================================
-  // NAV LINK STYLE
+  // NAV LINK STYLE (NavLink-এর জন্য)
   // ==========================================
-
   const navLinkClass = ({ isActive }) =>
     isActive
       ? "text-blue-600 font-semibold"
       : "text-gray-700 hover:text-blue-600 transition";
 
+  // সাধারণ <a> ট্যাগের জন্য সাধারণ স্ট্রিং ক্লাস
+  const staticLinkClass = "text-gray-700 hover:text-blue-600 transition";
+
   // ==========================================
   // CLOSE MOBILE MENU
   // ==========================================
-
   const closeMenu = () => {
     setMenuOpen(false);
   };
@@ -87,13 +86,10 @@ function Navbar() {
       {/* =====================================================
           MAIN NAVBAR
       ===================================================== */}
-
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-5 md:py-4">
         {/* =====================================================
-            MOBILE LEFT SIDE
-            MENU BUTTON
+            MOBILE LEFT SIDE MENU BUTTON
         ===================================================== */}
-
         <div className="flex items-center md:hidden">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -107,7 +103,6 @@ function Navbar() {
         {/* =====================================================
             LOGO
         ===================================================== */}
-
         <NavLink
           to="/"
           className="flex items-center md:flex-1"
@@ -116,29 +111,20 @@ function Navbar() {
           <img
             src={logo}
             alt="NovaCare"
-            className="
-              h-11
-              w-40
-              object-cover
-              md:h-16
-              md:w-64
-            "
+            className="h-11 w-40 object-cover md:h-16 md:w-64"
           />
         </NavLink>
 
         {/* =====================================================
             DESKTOP MENU
         ===================================================== */}
-
         <nav className="hidden items-center gap-6 md:flex">
           {/* All Medicines */}
-
           <NavLink to="/allproduct" className={navLinkClass}>
             All Medicines
           </NavLink>
 
           {/* My Orders */}
-
           {user && (
             <NavLink to="/my-orders" className={navLinkClass}>
               My Orders
@@ -146,29 +132,12 @@ function Navbar() {
           )}
 
           {/* Cart */}
-
           {user && (
             <NavLink to="/cart" className={navLinkClass}>
               <div className="relative">
                 <FaShoppingCart size={22} />
-
                 {cart.length > 0 && (
-                  <span
-                    className="
-                      absolute
-                      -right-3
-                      -top-3
-                      flex
-                      h-5
-                      w-5
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-red-600
-                      text-xs
-                      text-white
-                    "
-                  >
+                  <span className="absolute -right-3 -top-3 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white">
                     {cart.length}
                   </span>
                 )}
@@ -177,7 +146,6 @@ function Navbar() {
           )}
 
           {/* Dashboard */}
-
           {(role === "admin" || role === "super-admin") && (
             <NavLink to="/dashboard/all-orders" className={navLinkClass}>
               Dashboard
@@ -185,7 +153,6 @@ function Navbar() {
           )}
 
           {/* Login / Register */}
-
           {!user ? (
             <>
               <NavLink to="/login" className={navLinkClass}>
@@ -196,9 +163,12 @@ function Navbar() {
                 Register
               </NavLink>
 
+              {/* ✅ এখানে সাধারণ স্ট্রিং ক্লাস ব্যবহার করা হয়েছে */}
               <a
                 href="https://web2apkpro.com/public_download.php?project_id=20811&token=6e0ada7cc4"
-                className={navLinkClass}
+                target="_blank"
+                rel="noreferrer"
+                className={staticLinkClass}
               >
                 Download App
               </a>
@@ -211,14 +181,7 @@ function Navbar() {
 
               <button
                 onClick={handleLogout}
-                className="
-                  rounded-lg
-                  bg-red-600
-                  px-5
-                  py-2
-                  text-white
-                  hover:bg-red-700
-                "
+                className="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700"
               >
                 Logout
               </button>
@@ -227,10 +190,8 @@ function Navbar() {
         </nav>
 
         {/* =====================================================
-            MOBILE CART
-            RIGHT SIDE
+            MOBILE CART RIGHT SIDE
         ===================================================== */}
-
         <div className="flex items-center md:hidden">
           {user && (
             <NavLink
@@ -239,33 +200,13 @@ function Navbar() {
               aria-label="Cart"
             >
               <FaShoppingCart size={22} />
-
               {cart.length > 0 && (
-                <span
-                  className="
-                    absolute
-                    -right-1
-                    -top-1
-                    flex
-                    h-5
-                    min-w-5
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-red-600
-                    px-1
-                    text-[10px]
-                    font-bold
-                    text-white
-                  "
-                >
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
                   {cart.length}
                 </span>
               )}
             </NavLink>
           )}
-
-          {/* Login হলে cart-এর জায়গা ঠিক রাখতে */}
 
           {!user && <div className="h-10 w-10" />}
         </div>
@@ -274,12 +215,10 @@ function Navbar() {
       {/* =====================================================
           MOBILE MENU
       ===================================================== */}
-
       {menuOpen && (
         <div className="border-t bg-white shadow-lg md:hidden">
           <div className="flex flex-col">
             {/* All Medicines */}
-
             <NavLink
               to="/allproduct"
               onClick={closeMenu}
@@ -289,7 +228,6 @@ function Navbar() {
             </NavLink>
 
             {/* My Orders */}
-
             {user && (
               <NavLink
                 to="/my-orders"
@@ -301,7 +239,6 @@ function Navbar() {
             )}
 
             {/* Dashboard */}
-
             {(role === "admin" || role === "super-admin") && (
               <NavLink
                 to="/dashboard"
@@ -313,7 +250,6 @@ function Navbar() {
             )}
 
             {/* Login / Register */}
-
             {!user ? (
               <>
                 <NavLink
@@ -335,6 +271,8 @@ function Navbar() {
                 <a
                   href="https://web2apkpro.com/public_download.php?project_id=20811&token=6e0ada7cc4"
                   onClick={closeMenu}
+                  target="_blank"
+                  rel="noreferrer"
                   className="border-b px-6 py-4 font-medium text-gray-700 hover:bg-gray-50"
                 >
                   Download App
@@ -343,31 +281,20 @@ function Navbar() {
             ) : (
               <>
                 {/* User */}
-
                 <div className="border-b px-6 py-4">
                   <p className="text-sm text-gray-500">Logged in as</p>
-
                   <p className="mt-1 font-semibold text-gray-800">
                     {user.displayName || user.email}
                   </p>
                 </div>
 
                 {/* Logout */}
-
                 <button
                   onClick={() => {
                     handleLogout();
                     closeMenu();
                   }}
-                  className="
-                    m-4
-                    rounded-lg
-                    bg-red-600
-                    py-3
-                    font-semibold
-                    text-white
-                    hover:bg-red-700
-                  "
+                  className="m-4 rounded-lg bg-red-600 py-3 font-semibold text-white hover:bg-red-700"
                 >
                   Logout
                 </button>

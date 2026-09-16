@@ -20,7 +20,7 @@ import Swal from "sweetalert2";
 import useAuth from "../../hooks/useAuth";
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "https://medpharm-server-sgs6.vercel.app";
+  import.meta.env.VITE_API_URL || "https://medpharm-server-bz7t.vercel.app";
 
 function Dashboard() {
   const { user, logoutUser } = useAuth();
@@ -214,6 +214,18 @@ function Dashboard() {
               >
                 <FaImages />
                 Slider Management
+              </NavLink>
+              <NavLink
+                to="/dashboard/profit-report"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-4 py-3 transition ${
+                    isActive
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-700 hover:bg-blue-50"
+                  }`
+                }
+              >
+                <span>Profit Report</span>
               </NavLink>
             </>
           )}
