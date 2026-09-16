@@ -24,7 +24,7 @@ function DashboardHome() {
       setLoading(true);
 
       const res = await axios.get(
-        "https://medpharm-server-bz7t.vercel.app/api/dashboard/admin-stats",
+        " https://medpharm-server-3.onrender.com/api/dashboard/admin-stats",
       );
 
       setStats(res.data);

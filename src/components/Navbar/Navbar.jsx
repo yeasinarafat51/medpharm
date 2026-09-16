@@ -29,7 +29,7 @@ function Navbar() {
 
       try {
         const res = await axios.get(
-          `https://medpharm-server-bz7t.vercel.app/api/users/email/${user.email}`,
+          ` https://medpharm-server-3.onrender.com/api/users/email/${user.email}`,
         );
 
         if (res.data.success) {

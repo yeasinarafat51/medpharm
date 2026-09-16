@@ -82,7 +82,7 @@ function Register() {
       // ========================================
 
       await axios.post(
-        "https://medpharm-server-bz7t.vercel.app/api/users",
+        " https://medpharm-server-3.onrender.com/api/users",
         {
           name: data.name.trim(),
           address: data.address.trim(),

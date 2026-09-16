@@ -29,7 +29,7 @@ function AllItemMedicine() {
       setLoading(true);
 
       const res = await axios.get(
-        `https://medpharm-server-bz7t.vercel.app/api/medicines?search=${search}&page=${page}&limit=${limit}&sort=asc`,
+        ` https://medpharm-server-3.onrender.com/api/medicines?search=${search}&page=${page}&limit=${limit}&sort=asc`,
       );
 
       setMedicines(res.data.medicines);
@@ -378,7 +378,7 @@ function InvoiceDetails() {
   const loadOrder = async () => {
     try {
       const res = await axios.get(
-        `https://medpharm-server-bz7t.vercel.app/api/orders/${id}`,
+        ` https://medpharm-server-3.onrender.com/api/orders/${id}`,
       );
 
       if (res.data.success) {

@@ -15,7 +15,7 @@ function AllOrders() {
       setLoading(true);
 
       const res = await axios.get(
-        "https://medpharm-server-bz7t.vercel.app/api/orders",
+        " https://medpharm-server-3.onrender.com/api/orders",
       );
 
       if (res.data.success) {
@@ -45,7 +45,7 @@ function AllOrders() {
   const updateStatus = async (id, orderStatus) => {
     try {
       const res = await axios.patch(
-        `https://medpharm-server-bz7t.vercel.app/api/orders/${id}`,
+        ` https://medpharm-server-3.onrender.com/api/orders/${id}`,
         {
           orderStatus,
         },
@@ -77,7 +77,7 @@ function AllOrders() {
   const updatePayment = async (id, paymentStatus) => {
     try {
       const res = await axios.patch(
-        `https://medpharm-server-bz7t.vercel.app/api/orders/payment/${id}`,
+        ` https://medpharm-server-3.onrender.com/api/orders/payment/${id}`,
         {
           paymentStatus,
         },

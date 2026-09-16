@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-const API_URL = "https://medpharm-server-bz7t.vercel.app";
+const API_URL = " https://medpharm-server-3.onrender.com";
 
 function UpdateMedicine() {
   const { id } = useParams();

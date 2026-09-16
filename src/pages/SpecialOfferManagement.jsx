@@ -11,7 +11,7 @@ import {
   FaCalendarAlt,
 } from "react-icons/fa";
 
-const API_URL = "https://medpharm-server-bz7t.vercel.app";
+const API_URL = " https://medpharm-server-3.onrender.com";
 
 const initialForm = {
   medicineId: "",

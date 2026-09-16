@@ -39,7 +39,7 @@ function Login() {
   // API URL
   // =========================================================
 
-  const API_URL = "https://medpharm-server-bz7t.vercel.app";
+  const API_URL = " https://medpharm-server-3.onrender.com";
 
   // =========================================================
   // EMAIL / PASSWORD LOGIN

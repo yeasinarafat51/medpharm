@@ -8,7 +8,7 @@ import {
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-const API_URL = "https://medpharm-server-bz7t.vercel.app";
+const API_URL = " https://medpharm-server-3.onrender.com";
 
 function HeroSlider() {
   const [sliders, setSliders] = useState([]);
