@@ -2,10 +2,14 @@ import useCart from "../../hooks/useCart";
 import {
   FaPlus,
   FaMinus,
-  FaTrash,
+  FaTrashAlt,
   FaArrowLeft,
-  FaShoppingCart,
-  FaCreditCard,
+  FaShoppingBag,
+  FaShieldAlt,
+  FaTruck,
+  FaRegCheckCircle,
+  FaLock,
+  FaGift,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
@@ -13,586 +17,395 @@ function Cart() {
   const { cart, increaseQuantity, decreaseQuantity, removeFromCart } =
     useCart();
 
-  // ==========================================
-  // GRAND TOTAL
-  // ==========================================
-
+  // গ্র্যান্ড টোটাল
   const grandTotal = cart.reduce(
     (sum, item) =>
       sum + Number(item.sellingPrice || 0) * Number(item.quantity || 0),
     0,
   );
 
-  // ==========================================
-  // TOTAL ITEMS
-  // ==========================================
-
+  // মোট আইটেম সংখ্যা
   const totalItems = cart.reduce(
     (sum, item) => sum + Number(item.quantity || 0),
     0,
   );
 
   // ==========================================
-  // EMPTY CART
+  // EMPTY CART STATE
   // ==========================================
-
   if (cart.length === 0) {
     return (
-      <div className="min-h-[75vh] bg-gray-50 px-4 py-10">
-        <div className="mx-auto flex min-h-[65vh] max-w-2xl items-center justify-center">
-          <div className="w-full rounded-3xl bg-white p-8 text-center shadow-lg md:p-12">
-            {/* Icon */}
-
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-blue-50">
-              <FaShoppingCart className="text-5xl text-blue-600" />
-            </div>
-
-            {/* Title */}
-
-            <h2 className="mt-6 text-3xl font-bold text-gray-800 md:text-4xl">
-              Your Cart is Empty
-            </h2>
-
-            <p className="mx-auto mt-3 max-w-md text-gray-500">
-              You haven't added any medicines to your cart yet. Browse our
-              medicines and add your required items.
-            </p>
-
-            {/* Home Button */}
-
-            <Link
-              to="/"
-              className="
-                mt-7
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                bg-blue-600
-                px-7
-                py-3
-                font-semibold
-                text-white
-                shadow-md
-                transition
-                duration-300
-                hover:bg-blue-700
-                hover:shadow-lg
-              "
-            >
-              <FaArrowLeft />
-              Browse Medicines
-            </Link>
+      <div className="min-h-[80vh] bg-[#f8fafc] px-4 py-16 flex items-center justify-center">
+        <div className="w-full max-w-lg rounded-3xl border border-slate-200/80 bg-white p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.03)] sm:p-12">
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+            <FaShoppingBag className="text-4xl" />
           </div>
+
+          <h2 className="mt-6 text-2xl font-black tracking-tight text-slate-800 sm:text-3xl">
+            Your Cart is Currently Empty
+          </h2>
+
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500 sm:text-sm">
+            You haven't added any medicines yet. Enjoy free delivery on all
+            orders!
+          </p>
+
+          <Link
+            to="/"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-7 py-3 text-xs font-bold text-white shadow-md shadow-emerald-200 transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-95 sm:text-sm"
+          >
+            <FaArrowLeft />
+            <span>Browse Medicine Catalog</span>
+          </Link>
         </div>
       </div>
     );
   }
 
   // ==========================================
-  // MAIN CART
+  // MAIN CART LAYOUT
   // ==========================================
-
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-6 md:px-6 md:py-10">
+    <div className="min-h-screen bg-[#f8fafc] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        {/* ======================================
-            HEADER
-        ====================================== */}
-
-        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
-                <FaShoppingCart className="text-xl text-blue-600" />
-              </div>
-
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800 md:text-4xl">
-                  Shopping Cart
+        {/* HEADER */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+              <FaShoppingBag className="text-lg" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+                  Order Review
                 </h1>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  {totalItems} {totalItems === 1 ? "item" : "items"} in your
-                  cart
-                </p>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+                  {totalItems} {totalItems === 1 ? "Unit" : "Units"}
+                </span>
               </div>
+              <p className="text-xs text-slate-500">
+                Verified pharmaceutical orders processed by licensed pharmacists
+              </p>
             </div>
           </div>
 
-          {/* Continue Shopping */}
-
           <Link
             to="/"
-            className="
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              border
-              border-blue-600
-              bg-white
-              px-5
-              py-3
-              font-semibold
-              text-blue-600
-              transition
-              duration-300
-              hover:bg-blue-600
-              hover:text-white
-            "
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
           >
-            <FaArrowLeft />
-            Continue Shopping
+            <FaArrowLeft className="text-xs" />
+            <span>Continue Shopping</span>
           </Link>
         </div>
 
-        {/* ======================================
-            DESKTOP CART TABLE
-        ====================================== */}
+        {/* 🚀 FREE DELIVERY BANNER (যেকোনো অর্ডারে ১০০% ফ্রি) */}
+        <div className="mb-8 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+              <FaTruck className="text-base" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900 sm:text-sm">
+                100% Free Home Delivery Applied!
+              </h3>
+              <p className="text-[11px] text-emerald-700">
+                No minimum order amount required. Fast doorstep delivery is on
+                us.
+              </p>
+            </div>
+          </div>
+          <span className="hidden rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-black uppercase text-white sm:inline-block">
+            Free Shipping
+          </span>
+        </div>
 
-        <div className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md md:block">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              {/* Table Header */}
+        {/* GRID LAYOUT: ITEMS LIST + SUMMARY */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          {/* ========================================================
+              LEFT COLUMN: CART ITEMS (TABLE / CARDS)
+          ======================================================== */}
+          <div className="lg:col-span-8">
+            {/* DESKTOP TABLE */}
+            <div className="hidden overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs md:block">
+              <table className="w-full text-left">
+                <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="px-6 py-4">Medicine Info</th>
+                    <th className="px-6 py-4">Unit Price</th>
+                    <th className="px-6 py-4 text-center">Quantity</th>
+                    <th className="px-6 py-4 text-right">Subtotal</th>
+                    <th className="px-6 py-4 text-center">Remove</th>
+                  </tr>
+                </thead>
 
-              <thead>
-                <tr className="bg-blue-600 text-left text-white">
-                  <th className="px-6 py-5 font-semibold">Medicine</th>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {cart.map((item) => {
+                    const itemTotal =
+                      Number(item.sellingPrice || 0) *
+                      Number(item.quantity || 0);
 
-                  <th className="px-6 py-5 font-semibold">Price</th>
-
-                  <th className="px-6 py-5 text-center font-semibold">
-                    Quantity
-                  </th>
-
-                  <th className="px-6 py-5 font-semibold">Total</th>
-
-                  <th className="px-6 py-5 text-center font-semibold">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-
-              {/* Table Body */}
-
-              <tbody>
-                {cart.map((item) => {
-                  const itemTotal =
-                    Number(item.sellingPrice || 0) * Number(item.quantity || 0);
-
-                  return (
-                    <tr
-                      key={item._id}
-                      className="border-b border-gray-100 transition hover:bg-blue-50/40"
-                    >
-                      {/* Medicine */}
-
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-4">
-                          {/* Image */}
-
-                          <div className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100">
-                            <img
-                              src={item.image}
-                              alt={item.medicineName}
-                              className="h-full w-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
+                    return (
+                      <tr
+                        key={item._id}
+                        className="transition hover:bg-slate-50/60"
+                      >
+                        {/* PRODUCT DETAILS */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3.5">
+                            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 p-1">
+                              <img
+                                src={
+                                  item.image ||
+                                  "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop&q=60"
+                                }
+                                alt={item.medicineName}
+                                className="h-full w-full object-contain"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop&q=60";
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-slate-900 leading-snug">
+                                {item.medicineName}
+                              </h3>
+                              <p className="mt-0.5 text-[11px] text-slate-400">
+                                {item.company || "Certified Generic"}
+                              </p>
+                              <span className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                                <FaRegCheckCircle className="text-[8px]" /> In
+                                Stock
+                              </span>
+                            </div>
                           </div>
+                        </td>
 
-                          <div>
-                            <h3 className="font-bold text-gray-800">
-                              {item.medicineName}
-                            </h3>
-
-                            <p className="mt-1 text-sm text-gray-500">
-                              {item.company || "Medicine"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Price */}
-
-                      <td className="px-6 py-5">
-                        <span className="font-semibold text-green-600">
-                          ৳ {Number(item.sellingPrice || 0).toFixed(2)}
-                        </span>
-                      </td>
-
-                      {/* Quantity */}
-
-                      <td className="px-6 py-5">
-                        <div className="flex items-center justify-center gap-3">
-                          <button
-                            onClick={() => decreaseQuantity(item._id)}
-                            disabled={item.quantity <= 1}
-                            className="
-                              flex
-                              h-9
-                              w-9
-                              items-center
-                              justify-center
-                              rounded-full
-                              bg-red-500
-                              text-white
-                              transition
-                              hover:bg-red-600
-                              disabled:cursor-not-allowed
-                              disabled:bg-gray-300
-                            "
-                          >
-                            <FaMinus size={12} />
-                          </button>
-
-                          <span className="flex h-9 min-w-10 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 font-bold text-gray-800">
-                            {item.quantity}
+                        {/* PRICE */}
+                        <td className="px-6 py-4">
+                          <span className="font-bold text-slate-700">
+                            ৳ {Number(item.sellingPrice || 0).toFixed(2)}
                           </span>
+                        </td>
 
+                        {/* QUANTITY CONTROL */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 p-1 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => decreaseQuantity(item._id)}
+                                disabled={item.quantity <= 1}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600 shadow-2xs transition hover:bg-slate-200 disabled:opacity-40"
+                              >
+                                <FaMinus size={9} />
+                              </button>
+                              <span className="min-w-[32px] text-center font-black text-slate-800">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => increaseQuantity(item._id)}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600 shadow-2xs transition hover:bg-slate-200"
+                              >
+                                <FaPlus size={9} />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* SUBTOTAL */}
+                        <td className="px-6 py-4 text-right">
+                          <span className="font-black text-emerald-700 text-sm">
+                            ৳ {itemTotal.toFixed(2)}
+                          </span>
+                        </td>
+
+                        {/* DELETE */}
+                        <td className="px-6 py-4 text-center">
                           <button
-                            onClick={() => increaseQuantity(item._id)}
-                            className="
-                              flex
-                              h-9
-                              w-9
-                              items-center
-                              justify-center
-                              rounded-full
-                              bg-green-600
-                              text-white
-                              transition
-                              hover:bg-green-700
-                            "
+                            type="button"
+                            onClick={() => removeFromCart(item._id)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                            title="Remove from cart"
                           >
-                            <FaPlus size={12} />
+                            <FaTrashAlt size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE CARDS (< 768px) */}
+            <div className="space-y-3 md:hidden">
+              {cart.map((item) => {
+                const itemTotal =
+                  Number(item.sellingPrice || 0) * Number(item.quantity || 0);
+
+                return (
+                  <div
+                    key={item._id}
+                    className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs"
+                  >
+                    <div className="flex gap-3">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 p-1">
+                        <img
+                          src={
+                            item.image ||
+                            "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop&q=60"
+                          }
+                          alt={item.medicineName}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between">
+                          <h3 className="line-clamp-1 text-xs font-bold text-slate-800">
+                            {item.medicineName}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item._id)}
+                            className="text-slate-400 hover:text-red-500"
+                          >
+                            <FaTrashAlt size={12} />
                           </button>
                         </div>
-                      </td>
+                        <p className="text-[10px] text-slate-400">
+                          {item.company || "Medicine"}
+                        </p>
+                        <p className="mt-1 text-xs font-black text-emerald-700">
+                          ৳ {Number(item.sellingPrice || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
 
-                      {/* Total */}
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+                      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => decreaseQuantity(item._id)}
+                          disabled={item.quantity <= 1}
+                          className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-600 disabled:opacity-40"
+                        >
+                          <FaMinus size={8} />
+                        </button>
+                        <span className="min-w-[24px] text-center text-xs font-bold">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => increaseQuantity(item._id)}
+                          className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-600"
+                        >
+                          <FaPlus size={8} />
+                        </button>
+                      </div>
 
-                      <td className="px-6 py-5">
-                        <span className="font-bold text-gray-800">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400">
+                          Total:{" "}
+                        </span>
+                        <span className="text-sm font-black text-emerald-700">
                           ৳ {itemTotal.toFixed(2)}
                         </span>
-                      </td>
-
-                      {/* Delete */}
-
-                      <td className="px-6 py-5 text-center">
-                        <button
-                          onClick={() => removeFromCart(item._id)}
-                          className="
-                            inline-flex
-                            h-10
-                            w-10
-                            items-center
-                            justify-center
-                            rounded-lg
-                            bg-red-100
-                            text-red-600
-                            transition
-                            hover:bg-red-600
-                            hover:text-white
-                          "
-                          title="Remove"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ======================================
-            MOBILE CART
-        ====================================== */}
-
-        <div className="space-y-4 md:hidden">
-          {cart.map((item) => {
-            const itemTotal =
-              Number(item.sellingPrice || 0) * Number(item.quantity || 0);
-
-            return (
-              <div
-                key={item._id}
-                className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-              >
-                {/* Medicine Info */}
-
-                <div className="flex gap-3">
-                  {/* Image */}
-
-                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100">
-                    <img
-                      src={item.image}
-                      alt={item.medicineName}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  </div>
-
-                  {/* Name */}
-
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-lg font-bold text-gray-800">
-                      {item.medicineName}
-                    </h3>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                      {item.company || "Medicine"}
-                    </p>
-
-                    <p className="mt-2 font-bold text-green-600">
-                      ৳ {Number(item.sellingPrice || 0).toFixed(2)}
-                    </p>
-                  </div>
-
-                  {/* Delete */}
-
-                  <button
-                    onClick={() => removeFromCart(item._id)}
-                    className="
-                      flex
-                      h-9
-                      w-9
-                      flex-shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      bg-red-100
-                      text-red-600
-                      transition
-                      hover:bg-red-600
-                      hover:text-white
-                    "
-                  >
-                    <FaTrash size={14} />
-                  </button>
-                </div>
-
-                {/* Bottom Section */}
-
-                <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-                  {/* Quantity */}
-
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-gray-500">
-                      Quantity
-                    </p>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => decreaseQuantity(item._id)}
-                        disabled={item.quantity <= 1}
-                        className="
-                          flex
-                          h-9
-                          w-9
-                          items-center
-                          justify-center
-                          rounded-full
-                          bg-red-500
-                          text-white
-                          disabled:bg-gray-300
-                        "
-                      >
-                        <FaMinus size={11} />
-                      </button>
-
-                      <span className="flex h-9 min-w-10 items-center justify-center rounded-lg border bg-gray-50 px-3 font-bold">
-                        {item.quantity}
-                      </span>
-
-                      <button
-                        onClick={() => increaseQuantity(item._id)}
-                        className="
-                          flex
-                          h-9
-                          w-9
-                          items-center
-                          justify-center
-                          rounded-full
-                          bg-green-600
-                          text-white
-                        "
-                      >
-                        <FaPlus size={11} />
-                      </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Item Total */}
-
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-gray-500">
-                      Item Total
-                    </p>
-
-                    <p className="mt-1 text-xl font-bold text-gray-800">
-                      ৳ {itemTotal.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ======================================
-            BOTTOM SECTION
-        ====================================== */}
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          {/* Continue Shopping */}
-
-          <div className="hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm lg:block">
-            <h3 className="text-xl font-bold text-gray-800">
-              Need something else?
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Continue browsing our medicine collection and add more items to
-              your cart.
-            </p>
-
-            <Link
-              to="/"
-              className="
-                mt-5
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                bg-gray-100
-                px-5
-                py-3
-                font-semibold
-                text-gray-700
-                transition
-                hover:bg-blue-600
-                hover:text-white
-              "
-            >
-              <FaArrowLeft />
-              Back to Home
-            </Link>
+                );
+              })}
+            </div>
           </div>
 
-          {/* ==================================
-              ORDER SUMMARY
-          ================================== */}
-
-          <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md md:p-7">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Order Summary
+          {/* ========================================================
+              RIGHT COLUMN: ORDER SUMMARY (FREE SHIPPING)
+          ======================================================== */}
+          <div className="lg:col-span-4">
+            <div className="sticky top-6 rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h2 className="text-lg font-black tracking-tight text-slate-800">
+                  Payment Summary
                 </h2>
-
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-600">
-                  {totalItems} Items
+                <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                  <FaShieldAlt /> 100% Secure
                 </span>
               </div>
 
-              {/* Subtotal */}
+              <div className="mt-4 space-y-3 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>Subtotal ({totalItems} items)</span>
+                  <span className="font-bold text-slate-800">
+                    ৳ {grandTotal.toFixed(2)}
+                  </span>
+                </div>
 
-              <div className="flex justify-between border-b border-gray-100 py-3 text-gray-600">
-                <span>Subtotal</span>
+                {/* সর্বাবস্থায় ফ্রি ডেলিভারি */}
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="flex items-center gap-1.5">
+                    <FaTruck className="text-emerald-600 text-xs" />
+                    Delivery Charges
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 line-through text-[11px]">
+                      ৳ 50.00
+                    </span>
+                    <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[11px]">
+                      FREE
+                    </span>
+                  </div>
+                </div>
 
-                <span className="font-semibold text-gray-800">
-                  ৳ {grandTotal.toFixed(2)}
-                </span>
+                <div className="border-t border-slate-100 pt-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-bold text-slate-800">
+                      Total Payable
+                    </span>
+                    <span className="text-2xl font-black text-emerald-700">
+                      ৳ {grandTotal.toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-slate-400">
+                    Zero delivery charge added to your invoice
+                  </p>
+                </div>
               </div>
 
-              {/* Delivery */}
-
-              <div className="flex justify-between border-b border-gray-100 py-3 text-gray-600">
-                <span>Delivery Charge</span>
-
-                <span className="font-semibold text-green-600">Free</span>
-              </div>
-
-              {/* Grand Total */}
-
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-xl font-bold text-gray-800">
-                  Grand Total
-                </span>
-
-                <span className="text-3xl font-bold text-blue-600">
-                  ৳ {grandTotal.toFixed(2)}
-                </span>
-              </div>
-
-              {/* Checkout */}
-
+              {/* CHECKOUT BUTTON */}
               <Link
                 to="/checkout"
-                className="
-                  mt-6
-                  flex
-                  w-full
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  bg-blue-600
-                  py-4
-                  font-bold
-                  text-white
-                  shadow-md
-                  transition
-                  duration-300
-                  hover:bg-blue-700
-                  hover:shadow-lg
-                "
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-200 transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-95"
               >
-                <FaCreditCard />
-                Proceed to Checkout
+                <FaLock className="text-xs" />
+                <span>Proceed to Checkout</span>
               </Link>
 
-              {/* Mobile Home */}
-
-              <Link
-                to="/"
-                className="
-                  mt-3
-                  flex
-                  w-full
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-gray-300
-                  bg-white
-                  py-3
-                  font-semibold
-                  text-gray-700
-                  transition
-                  hover:border-blue-600
-                  hover:text-blue-600
-                  lg:hidden
-                "
-              >
-                <FaArrowLeft />
-                Continue Shopping
-              </Link>
-
-              <p className="mt-4 text-center text-xs text-gray-400">
-                Secure checkout • Fast delivery • Quality medicines
-              </p>
+              {/* TRUST BADGES */}
+              <div className="mt-6 border-t border-slate-100 pt-4">
+                <ul className="space-y-2 text-[11px] text-slate-500">
+                  <li className="flex items-center gap-2">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-bold">
+                      ✓
+                    </span>
+                    <span>100% Free Home Delivery Nationwide</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-bold">
+                      ✓
+                    </span>
+                    <span>100% Original & Unexpired Medicines</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-bold">
+                      ✓
+                    </span>
+                    <span>Cash on Delivery & Digital Payment Available</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
