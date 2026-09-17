@@ -121,7 +121,7 @@ function Navbar() {
         <nav className="hidden items-center gap-6 md:flex">
           {/* All Medicines */}
           <NavLink to="/allproduct" className={navLinkClass}>
-            All Medicines
+            Medicines
           </NavLink>
 
           {/* My Orders */}
@@ -147,7 +147,7 @@ function Navbar() {
 
           {/* Dashboard */}
           {(role === "admin" || role === "super-admin") && (
-            <NavLink to="/dashboard/all-orders" className={navLinkClass}>
+            <NavLink to="/dashboard/add-medicine" className={navLinkClass}>
               Dashboard
             </NavLink>
           )}
@@ -224,7 +224,7 @@ function Navbar() {
               onClick={closeMenu}
               className="border-b px-6 py-4 font-medium text-gray-700 hover:bg-gray-50"
             >
-              All Medicines
+              Medicines
             </NavLink>
 
             {/* My Orders */}
@@ -241,7 +241,7 @@ function Navbar() {
             {/* Dashboard */}
             {(role === "admin" || role === "super-admin") && (
               <NavLink
-                to="/dashboard"
+                to="/dashboard/add-medicine"
                 onClick={closeMenu}
                 className="border-b px-6 py-4 font-medium text-gray-700 hover:bg-gray-50"
               >

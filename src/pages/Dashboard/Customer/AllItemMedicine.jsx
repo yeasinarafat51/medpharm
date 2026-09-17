@@ -280,7 +280,7 @@ function AllItemMedicine() {
               </div>
               <div>
                 <h1 className="text-xl font-black tracking-tight text-slate-800 sm:text-2xl">
-                  All Medicines
+                  Medicines
                 </h1>
                 <p className="text-[11px] text-slate-500 sm:text-xs">
                   Find genuine medicines from top pharmaceutical companies.
@@ -354,15 +354,13 @@ function AllItemMedicine() {
           <div className="flex min-h-[40vh] items-center justify-center">
             <div className="text-center">
               <FaCapsules className="mx-auto text-5xl text-slate-300" />
-              <h2 className="mt-3 text-lg font-bold text-slate-700">
-                No Medicine Found
-              </h2>
+              <h2 className="mt-3 text-lg font-bold text-slate-700">Waiting</h2>
               <p className="mt-1 text-xs text-slate-500">
                 {selectedCompany
-                  ? `No medicines found for ${selectedCompany}.`
+                  ? `Wating ${selectedCompany}.`
                   : search
-                    ? `No match found for "${search}".`
-                    : "No medicines available."}
+                    ? `Loading "${search}".`
+                    : " medicines available."}
               </p>
             </div>
           </div>
