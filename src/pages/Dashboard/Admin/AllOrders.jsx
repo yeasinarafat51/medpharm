@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { Link } from "react-router-dom";
 import {
   FaUndo,
-  FaTrashAlt,
   FaFileInvoice,
   FaBoxes,
   FaPhoneAlt,
   FaMapMarkerAlt,
   FaCalendarAlt,
+  FaClock,
+  FaChevronDown,
+  FaChevronUp,
+  FaReceipt,
+  FaLayerGroup,
 } from "react-icons/fa";
 
 const API_URL =
@@ -19,6 +23,11 @@ function AllOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // দিন ভিত্তিক সেকশন টগল
+  const [expandedDays, setExpandedDays] = useState({});
+  // কার্ডে ট্যাপ দিলে ফুল ভিউ দেখানোর জন্য এক্সপ্যান্ডেড অর্ডার আইডি
+  const [expandedOrders, setExpandedOrders] = useState({});
+
   // =============================
   // Load Orders
   // =============================
@@ -27,7 +36,7 @@ function AllOrders() {
       setLoading(true);
       const res = await axios.get(`${API_URL}/api/orders`);
 
-      if (res.data.success) {
+      if (res.data?.success) {
         setOrders(res.data.orders || []);
       } else {
         setOrders([]);
@@ -48,6 +57,143 @@ function AllOrders() {
     loadOrders();
   }, []);
 
+  // =========================================================================
+  // লজিক ১: দুপুর ২:০০ টা (14:00) থেকে পরের দিন দুপুর ২:০০ টা বিজনেস সাইকেল
+  // =========================================================================
+  const getCustomDayCycle = (dateString) => {
+    const d = new Date(dateString);
+    const cycleStart = new Date(d);
+    if (d.getHours() < 14) {
+      cycleStart.setDate(cycleStart.getDate() - 1);
+    }
+    cycleStart.setHours(14, 0, 0, 0);
+
+    const cycleEnd = new Date(cycleStart);
+    cycleEnd.setDate(cycleEnd.getDate() + 1);
+
+    const key = cycleStart.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    const formatTimeDate = (date) =>
+      date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+
+    const label = `${formatTimeDate(cycleStart)} 02:00 PM  →  ${formatTimeDate(
+      cycleEnd,
+    )} 02:00 PM`;
+
+    return {
+      key,
+      cycleStart,
+      cycleEnd,
+      label,
+    };
+  };
+
+  // =========================================================================
+  // লজিক ২: একই দিনে একই কাস্টমারের একাধিক অর্ডার একটাই ইনভয়েসে মার্জ করা
+  // =========================================================================
+  const groupedOrders = useMemo(() => {
+    const dayGroups = {};
+
+    orders.forEach((order) => {
+      const { key, label, cycleStart } = getCustomDayCycle(order.orderDate);
+
+      if (!dayGroups[key]) {
+        dayGroups[key] = {
+          cycleKey: key,
+          label,
+          startTime: cycleStart.getTime(),
+          customerMap: {}, // একই কাস্টমারের অর্ডার একত্র করার জন্য
+          totalValue: 0,
+        };
+      }
+
+      // কাস্টমার চিহ্নিত করার কি (ইমেইল অথবা ফোন নম্বর অথবা নাম)
+      const customerKey = (
+        order.customerEmail ||
+        order.phone ||
+        order.customerName ||
+        "walk-in-customer"
+      )
+        .toLowerCase()
+        .trim();
+
+      if (!dayGroups[key].customerMap[customerKey]) {
+        // নতুন কাস্টমার এন্ট্রি
+        dayGroups[key].customerMap[customerKey] = {
+          ...order,
+          originalOrderIds: [order._id],
+          orderCount: 1,
+          items: (order.items || []).map((it) => ({ ...it })),
+          notes: order.note ? [order.note] : [],
+          grandTotal: Number(order.grandTotal || 0),
+        };
+      } else {
+        // একই কাস্টমার আবার অর্ডার করেছে! তাই মার্জ করা হচ্ছে
+        const existing = dayGroups[key].customerMap[customerKey];
+        existing.originalOrderIds.push(order._id);
+        existing.orderCount += 1;
+        existing.grandTotal += Number(order.grandTotal || 0);
+
+        // আইটেমগুলো মার্জ করা
+        (order.items || []).forEach((newItem) => {
+          const found = existing.items.find(
+            (it) =>
+              (it.medicineId || it._id || it.name) ===
+              (newItem.medicineId || newItem._id || newItem.name),
+          );
+          if (found) {
+            found.quantity =
+              Number(found.quantity || 0) + Number(newItem.quantity || 0);
+            found.totalPrice =
+              Number(found.totalPrice || 0) + Number(newItem.totalPrice || 0);
+          } else {
+            existing.items.push({ ...newItem });
+          }
+        });
+
+        if (order.note && !existing.notes.includes(order.note)) {
+          existing.notes.push(order.note);
+        }
+
+        // আপডেট ফোন বা ঠিকানা
+        if (order.address) existing.address = order.address;
+        if (order.phone) existing.phone = order.phone;
+      }
+
+      dayGroups[key].totalValue += Number(order.grandTotal || 0);
+    });
+
+    // অবজেক্ট থেকে অ্যারেতে রূপান্তর
+    return Object.values(dayGroups)
+      .map((day) => ({
+        ...day,
+        mergedOrders: Object.values(day.customerMap).sort(
+          (a, b) => new Date(b.orderDate) - new Date(a.orderDate),
+        ),
+      }))
+      .sort((a, b) => b.startTime - a.startTime);
+  }, [orders]);
+
+  // টগল ডে
+  const toggleDay = (key) => {
+    setExpandedDays((prev) => ({
+      ...prev,
+      [key]: prev[key] === false ? true : false,
+    }));
+  };
+
+  // ট্যাপ দিয়ে ফুল ভিউ টগল (Tap to View Details)
+  const toggleOrderDetails = (orderId) => {
+    setExpandedOrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
+
   // =============================
   // Update Order Status
   // =============================
@@ -57,7 +203,7 @@ function AllOrders() {
         orderStatus,
       });
 
-      if (res.data.success) {
+      if (res.data?.success) {
         Swal.fire({
           icon: "success",
           title: "Order Status Updated",
@@ -81,7 +227,7 @@ function AllOrders() {
         paymentStatus,
       });
 
-      if (res.data.success) {
+      if (res.data?.success) {
         Swal.fire({
           icon: "success",
           title: "Payment Status Updated",
@@ -103,12 +249,11 @@ function AllOrders() {
     const medId = item.medicineId || item._id;
     const currentQty = Number(item.quantity);
 
-    // সুইট অ্যালার্ট দিয়ে কোয়ান্টিটি ইনপুট নেওয়া
     const { value: returnQty } = await Swal.fire({
       title: `Return Medicine`,
       html: `
         <div class="text-left text-sm space-y-2">
-          <p class="font-bold text-slate-800">${item.medicineName}</p>
+          <p class="font-bold text-slate-800">${item.medicineName || item.name}</p>
           <p class="text-slate-500">Ordered Quantity: <b>${currentQty} pcs</b></p>
           <p class="text-slate-500">Unit Price: <b>৳${item.unitPrice}</b></p>
           <hr class="my-2"/>
@@ -123,7 +268,7 @@ function AllOrders() {
         step: 1,
       },
       showCancelButton: true,
-      confirmButtonText: "Confirm Return & Restock",
+      confirmButtonText: "Confirm Return",
       confirmButtonColor: "#dc2626",
       cancelButtonText: "Cancel",
       inputValidator: (value) => {
@@ -138,22 +283,19 @@ function AllOrders() {
 
     if (!returnQty) return;
 
-    const qtyToReturn = Number(returnQty);
-
     try {
       Swal.fire({
         title: "Processing Return...",
-        text: "Updating invoice and restocking medicine...",
+        text: "Updating invoice and inventory...",
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading(),
       });
 
-      // ব্যাকএন্ড API কল
       const res = await axios.put(
         `${API_URL}/api/orders/${order._id}/return-item`,
         {
           medicineId: medId,
-          returnQuantity: qtyToReturn,
+          returnQuantity: Number(returnQty),
         },
       );
 
@@ -161,10 +303,6 @@ function AllOrders() {
         Swal.fire({
           icon: "success",
           title: "Product Returned Successfully!",
-          html: `
-            <p><b>${qtyToReturn} pcs</b> of <i>${item.medicineName}</i> has been removed from this order.</p>
-            <p class="text-xs text-green-600 mt-2">Inventory stock automatically updated!</p>
-          `,
         });
         loadOrders();
       } else {
@@ -179,9 +317,7 @@ function AllOrders() {
       Swal.fire({
         icon: "error",
         title: "Return Error",
-        text:
-          error.response?.data?.message ||
-          "Could not return product. Make sure the return API is active.",
+        text: error.response?.data?.message || "Could not process return.",
       });
     }
   };
@@ -199,242 +335,471 @@ function AllOrders() {
     );
   }
 
+  const allTimeTotal = orders.reduce(
+    (sum, o) => sum + Number(o.grandTotal || 0),
+    0,
+  );
+
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-      {/* HEADER */}
-      <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800">
-            Customer Order Management
-          </h1>
-          <p className="text-sm text-slate-500">
-            Manage deliveries, payments, and product returns/refunds.
-          </p>
-        </div>
-        <button
-          onClick={loadOrders}
-          className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
-        >
-          <span>Total Orders: {orders.length}</span>
-        </button>
-      </div>
-
-      {orders.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-xs">
-          <FaBoxes className="mx-auto text-5xl text-slate-300" />
-          <h2 className="mt-4 text-xl font-bold text-slate-600">
-            No Orders Found
-          </h2>
-          <p className="text-xs text-slate-400">
-            New customer orders will appear here.
-          </p>
-        </div>
-      ) : (
-        orders.map((order, orderIndex) => (
-          <div
-            key={order._id}
-            className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition hover:shadow-md"
-          >
-            {/* ORDER HEADER */}
-            <div className="flex flex-wrap items-center justify-between border-b border-slate-100 bg-slate-50/80 p-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-emerald-600 px-2.5 py-0.5 text-xs font-black text-white">
-                    Order #{orderIndex + 1}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    ID: {order._id}
-                  </span>
-                </div>
-                <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                  <FaCalendarAlt className="text-slate-400 text-xs" />
-                  {new Date(order.orderDate).toLocaleString("en-BD", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Grand Total
-                </span>
-                <h2 className="text-2xl font-black text-emerald-700">
-                  ৳{" "}
-                  {Number(order.grandTotal || 0).toLocaleString("en-BD", {
-                    minimumFractionDigits: 2,
-                  })}
-                </h2>
-                <span className="text-[11px] text-slate-500">
-                  {order.items?.length || 0} Products Included
-                </span>
-              </div>
+    <div className="min-h-screen bg-[#f8fafc] p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl">
+        {/* HEADER */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">
+                2 PM - 2 PM Business Cycle
+              </span>
+              <span className="text-xs text-slate-400">
+                Auto-merged Multiple Customer Invoices
+              </span>
             </div>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900">
+              Orders Management
+            </h1>
+            <p className="text-xs text-slate-500">
+              Tap any order card to expand full view. Multiple orders from same
+              customer are merged into 1 invoice.
+            </p>
+          </div>
 
-            {/* CUSTOMER & STATUS */}
-            <div className="grid gap-6 border-b border-slate-100 p-5 md:grid-cols-2">
-              <div>
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Customer Details
-                </h3>
-                <div className="space-y-1.5 text-sm text-slate-700">
-                  <p className="font-bold text-slate-800">
-                    {order.customerName}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {order.customerEmail}
-                  </p>
-                  <p className="flex items-center gap-2 text-xs">
-                    <FaPhoneAlt className="text-slate-400" />
-                    <span>{order.phone || "No phone provided"}</span>
-                  </p>
-                  <p className="flex items-start gap-2 text-xs">
-                    <FaMapMarkerAlt className="text-slate-400 mt-0.5" />
-                    <span>{order.address || "No delivery address"}</span>
-                  </p>
-                  {order.note && (
-                    <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800 border border-amber-100">
-                      <b>Note:</b> {order.note}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Order Management
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Payment Status
-                    </label>
-                    <select
-                      value={order.paymentStatus}
-                      onChange={(e) => updatePayment(order._id, e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs font-semibold outline-none focus:border-emerald-500 focus:bg-white"
-                    >
-                      <option value="Unpaid">Unpaid</option>
-                      <option value="Paid">Paid</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Delivery Status
-                    </label>
-                    <select
-                      value={order.orderStatus}
-                      onChange={(e) => updateStatus(order._id, e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs font-semibold outline-none focus:border-emerald-500 focus:bg-white"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Processing">Processing</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-2xs text-right">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                Total Placed
+              </span>
+              <span className="text-lg font-black text-slate-800">
+                {orders.length} Orders
+              </span>
             </div>
-
-            {/* MEDICINES TABLE WITH RETURN ACTION */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold uppercase text-slate-400">
-                  <tr>
-                    <th className="px-5 py-3">#</th>
-                    <th className="px-5 py-3">Medicine</th>
-                    <th className="px-5 py-3">Company</th>
-                    <th className="px-5 py-3 text-center">Qty</th>
-                    <th className="px-5 py-3 text-right">Unit Price</th>
-                    <th className="px-5 py-3 text-right">Total Price</th>
-                    <th className="px-5 py-3 text-center">Action</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {(order.items || []).map((item, index) => (
-                    <tr key={index} className="hover:bg-slate-50/60">
-                      <td className="px-5 py-3.5 text-slate-400">
-                        {index + 1}
-                      </td>
-                      <td className="px-5 py-3.5 font-bold text-slate-800">
-                        {item.medicineName}
-                      </td>
-                      <td className="px-5 py-3.5 text-slate-500">
-                        {item.company || "N/A"}
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-bold text-slate-700">
-                        <span className="rounded bg-slate-100 px-2 py-1">
-                          {item.quantity} pcs
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right text-slate-600">
-                        ৳ {Number(item.unitPrice).toFixed(2)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-bold text-emerald-700">
-                        ৳ {Number(item.totalPrice).toFixed(2)}
-                      </td>
-                      <td className="px-5 py-3.5 text-center">
-                        {/* RETURN BUTTON */}
-                        <button
-                          type="button"
-                          onClick={() => handleReturnItem(order, item)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
-                          title="Return/Refund item & update invoice"
-                        >
-                          <FaUndo className="text-[10px]" />
-                          <span>Return Item</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* ORDER FOOTER */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/50 p-4 sm:px-6">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
-                    order.orderStatus === "Pending"
-                      ? "bg-amber-500"
-                      : order.orderStatus === "Processing"
-                        ? "bg-blue-600"
-                        : order.orderStatus === "Completed"
-                          ? "bg-emerald-600"
-                          : "bg-red-600"
-                  }`}
-                >
-                  {order.orderStatus}
-                </span>
-
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
-                    order.paymentStatus === "Paid"
-                      ? "bg-emerald-600"
-                      : "bg-red-500"
-                  }`}
-                >
-                  {order.paymentStatus}
-                </span>
-              </div>
-
-              <div>
-                <Link
-                  to={`/dashboard/invoice/${order._id}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-slate-900"
-                >
-                  <FaFileInvoice className="text-slate-400" />
-                  <span>View Updated Invoice</span>
-                </Link>
-              </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 shadow-2xs text-right">
+              <span className="text-[10px] uppercase font-bold text-emerald-700 block">
+                Total Revenue
+              </span>
+              <span className="text-lg font-black text-emerald-800">
+                ৳{" "}
+                {allTimeTotal.toLocaleString("en-BD", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
             </div>
           </div>
-        ))
-      )}
+        </div>
+
+        {groupedOrders.length === 0 ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xs">
+            <FaBoxes className="mx-auto text-5xl text-slate-300" />
+            <h2 className="mt-4 text-xl font-bold text-slate-700">
+              No Orders Found
+            </h2>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {groupedOrders.map((dayGroup, groupIdx) => {
+              const isCollapsed = expandedDays[dayGroup.cycleKey] === false;
+
+              return (
+                <div
+                  key={dayGroup.cycleKey}
+                  className="rounded-3xl border border-slate-200 bg-white shadow-xs overflow-hidden"
+                >
+                  {/* DAY BANNER */}
+                  <div
+                    onClick={() => toggleDay(dayGroup.cycleKey)}
+                    className="cursor-pointer bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 text-white transition hover:opacity-95"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          <FaClock size={20} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+                              Day #{groupedOrders.length - groupIdx}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              24-Hr Cycle (2:00 PM - 2:00 PM)
+                            </span>
+                          </div>
+                          <h2 className="text-base font-black tracking-wide sm:text-lg">
+                            {dayGroup.label}
+                          </h2>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 sm:gap-6">
+                        <div className="text-right">
+                          <span className="block text-[10px] font-bold uppercase text-slate-400">
+                            Unique Invoices
+                          </span>
+                          <span className="text-base font-black text-white">
+                            {dayGroup.mergedOrders.length} Invoices
+                          </span>
+                        </div>
+
+                        <div className="text-right border-l border-slate-700 pl-4 sm:pl-6">
+                          <span className="block text-[10px] font-bold uppercase text-emerald-400">
+                            Day's Total Value
+                          </span>
+                          <span className="text-xl font-black text-emerald-400 sm:text-2xl">
+                            ৳{" "}
+                            {dayGroup.totalValue.toLocaleString("en-BD", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400"
+                        >
+                          {isCollapsed ? (
+                            <FaChevronDown size={14} />
+                          ) : (
+                            <FaChevronUp size={14} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ORDERS LIST IN THIS CYCLE */}
+                  {!isCollapsed && (
+                    <div className="p-5 sm:p-6 space-y-4 bg-slate-50/50">
+                      {dayGroup.mergedOrders.map((order) => {
+                        const isExpanded = !!expandedOrders[order._id];
+                        const isMultiOrder = order.orderCount > 1;
+
+                        const totalQuantity = (order.items || []).reduce(
+                          (sum, it) => sum + Number(it.quantity || 0),
+                          0,
+                        );
+
+                        return (
+                          <div
+                            key={order._id}
+                            className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition duration-200 hover:shadow-md"
+                          >
+                            {/* CLICKABLE CARD HEADER (ট্যাপ দিলে ফুল ভিউ দেখাবে) */}
+                            <div
+                              onClick={() => toggleOrderDetails(order._id)}
+                              className="cursor-pointer p-4 sm:p-5 transition hover:bg-slate-50/70"
+                            >
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                {/* Left Side: Customer & Invoice Info */}
+                                <div className="flex items-start gap-3.5">
+                                  <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                    <FaReceipt size={18} />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="text-base font-black text-slate-900">
+                                        {order.customerName}
+                                      </h3>
+
+                                      {/* একই কাস্টমারের একাধিক অর্ডার হলে বিশেষ ব্যাজ */}
+                                      {isMultiOrder ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-black text-purple-800 border border-purple-200 animate-pulse">
+                                          <FaLayerGroup size={10} />
+                                          {order.orderCount} Orders Merged into
+                                          1 Invoice
+                                        </span>
+                                      ) : (
+                                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                                          1 Single Order
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                      <span className="flex items-center gap-1 font-semibold text-slate-700">
+                                        <FaPhoneAlt className="text-slate-400 text-[10px]" />
+                                        {order.phone || "No phone"}
+                                      </span>
+                                      <span>•</span>
+                                      <span>
+                                        {order.items?.length || 0} unique
+                                        medicines ({totalQuantity} units)
+                                      </span>
+                                      <span>•</span>
+                                      <span>
+                                        {new Date(
+                                          order.orderDate,
+                                        ).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right Side: Total Amount & Expand Trigger */}
+                                <div className="flex items-center justify-between sm:justify-end gap-5 border-t border-slate-100 pt-3 sm:border-0 sm:pt-0">
+                                  <div className="text-left sm:text-right">
+                                    <span className="block text-[10px] uppercase font-bold text-slate-400">
+                                      Total Invoice Payable
+                                    </span>
+                                    <span className="text-xl font-black text-emerald-700">
+                                      ৳{" "}
+                                      {Number(order.grandTotal).toLocaleString(
+                                        "en-BD",
+                                        { minimumFractionDigits: 2 },
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700">
+                                      {isExpanded
+                                        ? "Hide Details"
+                                        : "Tap for Full View"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600"
+                                    >
+                                      {isExpanded ? (
+                                        <FaChevronUp size={12} />
+                                      ) : (
+                                        <FaChevronDown size={12} />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* FULL DETAILS VIEW (ট্যাপ করলে প্রদর্শিত হবে) */}
+                            {isExpanded && (
+                              <div className="border-t border-slate-100 bg-slate-50/80 p-5 space-y-5">
+                                {/* CUSTOMER ADDRESS & STATUS CONTROLS */}
+                                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+                                  <div>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                      Delivery Address & Info
+                                    </h4>
+                                    <div className="space-y-1.5 text-xs text-slate-700">
+                                      <p className="flex items-start gap-2">
+                                        <FaMapMarkerAlt className="mt-0.5 text-slate-400 shrink-0" />
+                                        <span>
+                                          <b>Address:</b>{" "}
+                                          {order.address ||
+                                            "No delivery address"}
+                                        </span>
+                                      </p>
+                                      <p className="text-slate-500">
+                                        <b>Email:</b> {order.customerEmail}
+                                      </p>
+                                      {order.notes?.length > 0 && (
+                                        <div className="mt-2 rounded-xl bg-amber-50 p-2.5 text-[11px] text-amber-900 border border-amber-200">
+                                          <b>Customer Instructions / Notes:</b>
+                                          <ul className="list-disc list-inside mt-0.5">
+                                            {order.notes.map((n, i) => (
+                                              <li key={i}>{n}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Quick Status Modifiers */}
+                                  <div>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                      Update Order Status
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="text-[10px] font-bold text-slate-500">
+                                          Payment Status
+                                        </label>
+                                        <select
+                                          value={order.paymentStatus}
+                                          onChange={(e) =>
+                                            updatePayment(
+                                              order._id,
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                                            order.paymentStatus === "Paid"
+                                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                              : "border-red-200 bg-red-50 text-red-600"
+                                          }`}
+                                        >
+                                          <option value="Unpaid">Unpaid</option>
+                                          <option value="Paid">Paid</option>
+                                        </select>
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] font-bold text-slate-500">
+                                          Delivery Status
+                                        </label>
+                                        <select
+                                          value={order.orderStatus}
+                                          onChange={(e) =>
+                                            updateStatus(
+                                              order._id,
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs font-semibold outline-none focus:border-emerald-500 focus:bg-white"
+                                        >
+                                          <option value="Pending">
+                                            Pending
+                                          </option>
+                                          <option value="Processing">
+                                            Processing
+                                          </option>
+                                          <option value="Completed">
+                                            Completed
+                                          </option>
+                                          <option value="Cancelled">
+                                            Cancelled
+                                          </option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* COMBINED MEDICINE ITEMS LIST */}
+                                <div>
+                                  <div className="mb-2 flex items-center justify-between">
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                      Medicines in this Combined Invoice (
+                                      {order.items?.length || 0})
+                                    </h4>
+                                    <span className="text-xs font-bold text-emerald-700">
+                                      Total Units: {totalQuantity} pcs
+                                    </span>
+                                  </div>
+
+                                  <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                                    <table className="w-full text-left text-xs">
+                                      <thead className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase text-slate-400">
+                                        <tr>
+                                          <th className="px-4 py-3">
+                                            Medicine Name
+                                          </th>
+                                          <th className="px-4 py-3">Company</th>
+                                          <th className="px-4 py-3 text-center">
+                                            Total Quantity
+                                          </th>
+                                          <th className="px-4 py-3 text-right">
+                                            Unit Price
+                                          </th>
+                                          <th className="px-4 py-3 text-right">
+                                            Subtotal
+                                          </th>
+                                          <th className="px-4 py-3 text-center">
+                                            Action
+                                          </th>
+                                        </tr>
+                                      </thead>
+
+                                      <tbody className="divide-y divide-slate-100">
+                                        {(order.items || []).map(
+                                          (item, itemIdx) => (
+                                            <tr
+                                              key={itemIdx}
+                                              className="hover:bg-slate-50/60"
+                                            >
+                                              <td className="px-4 py-3 font-bold text-slate-800">
+                                                {item.medicineName || item.name}
+                                              </td>
+                                              <td className="px-4 py-3 text-slate-400">
+                                                {item.company ||
+                                                  "Certified Generic"}
+                                              </td>
+                                              <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                                <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-emerald-800 border border-emerald-100">
+                                                  {item.quantity} pcs
+                                                </span>
+                                              </td>
+                                              <td className="px-4 py-3 text-right text-slate-600">
+                                                ৳{" "}
+                                                {Number(item.unitPrice).toFixed(
+                                                  2,
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-3 text-right font-black text-emerald-700">
+                                                ৳{" "}
+                                                {Number(
+                                                  item.totalPrice,
+                                                ).toFixed(2)}
+                                              </td>
+                                              <td className="px-4 py-3 text-center">
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleReturnItem(
+                                                      order,
+                                                      item,
+                                                    )
+                                                  }
+                                                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
+                                                  title="Return/Refund item"
+                                                >
+                                                  <FaUndo size={9} />
+                                                  <span>Return</span>
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ),
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+
+                                {/* COMBINED INVOICE FOOTER (সরাসরি সম্পূর্ণ ডাটা state আকারে ইনভয়েসে পাঠানো হচ্ছে) */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                                  <div className="text-xs text-slate-500">
+                                    {isMultiOrder ? (
+                                      <span>
+                                        Merged Database Order IDs:{" "}
+                                        <b>
+                                          {order.originalOrderIds.join(", ")}
+                                        </b>
+                                      </span>
+                                    ) : (
+                                      <span>
+                                        Order ID: <b>{order._id}</b>
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <Link
+                                    to={`/dashboard/invoice/${order._id}`}
+                                    state={{ combinedOrder: order }}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-black text-white shadow-xs transition hover:bg-slate-800"
+                                  >
+                                    <FaFileInvoice className="text-emerald-400" />
+                                    <span>
+                                      {isMultiOrder
+                                        ? "Print Combined 1 Invoice"
+                                        : "Print Invoice"}
+                                    </span>
+                                  </Link>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
