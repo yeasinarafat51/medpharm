@@ -14,6 +14,7 @@ import {
   FaChevronUp,
   FaReceipt,
   FaLayerGroup,
+  FaPrint,
 } from "react-icons/fa";
 
 const API_URL =
@@ -25,7 +26,7 @@ function AllOrders() {
 
   // দিন ভিত্তিক সেকশন টগল
   const [expandedDays, setExpandedDays] = useState({});
-  // কার্ডে ট্যাপ দিলে ফুল ভিউ দেখানোর জন্য এক্সপ্যান্ডেড অর্ডার আইডি
+  // কার্ডে ট্যাপ দিলে ফুল ভিউ দেখানোর জন্য
   const [expandedOrders, setExpandedOrders] = useState({});
 
   // =============================
@@ -71,7 +72,7 @@ function AllOrders() {
     const cycleEnd = new Date(cycleStart);
     cycleEnd.setDate(cycleEnd.getDate() + 1);
 
-    const key = cycleStart.toISOString().split("T")[0]; // YYYY-MM-DD
+    const key = cycleStart.toISOString().split("T")[0];
 
     const formatTimeDate = (date) =>
       date.toLocaleDateString("en-US", {
@@ -93,7 +94,7 @@ function AllOrders() {
   };
 
   // =========================================================================
-  // লজিক ২: একই দিনে একই কাস্টমারের একাধিক অর্ডার একটাই ইনভয়েসে মার্জ করা
+  // লজিক ২: একই দিনে একই কাস্টমারের একাধিক অর্ডার রাখা + আলাদা লিস্ট সংরক্ষণ
   // =========================================================================
   const groupedOrders = useMemo(() => {
     const dayGroups = {};
@@ -106,12 +107,12 @@ function AllOrders() {
           cycleKey: key,
           label,
           startTime: cycleStart.getTime(),
-          customerMap: {}, // একই কাস্টমারের অর্ডার একত্র করার জন্য
+          customerMap: {},
           totalValue: 0,
         };
       }
 
-      // কাস্টমার চিহ্নিত করার কি (ইমেইল অথবা ফোন নম্বর অথবা নাম)
+      // কাস্টমার চিহ্নিত করার কি
       const customerKey = (
         order.customerEmail ||
         order.phone ||
@@ -130,15 +131,17 @@ function AllOrders() {
           items: (order.items || []).map((it) => ({ ...it })),
           notes: order.note ? [order.note] : [],
           grandTotal: Number(order.grandTotal || 0),
+          individualOrders: [{ ...order }], // প্রতিটি একক অর্ডার সংরক্ষণ
         };
       } else {
-        // একই কাস্টমার আবার অর্ডার করেছে! তাই মার্জ করা হচ্ছে
+        // একই কাস্টমার আবার অর্ডার করেছে
         const existing = dayGroups[key].customerMap[customerKey];
         existing.originalOrderIds.push(order._id);
         existing.orderCount += 1;
         existing.grandTotal += Number(order.grandTotal || 0);
+        existing.individualOrders.push({ ...order }); // আলাদা একক অর্ডার হিসেবে যুক্ত
 
-        // আইটেমগুলো মার্জ করা
+        // মার্জড আইটেম লিস্ট আপডেট
         (order.items || []).forEach((newItem) => {
           const found = existing.items.find(
             (it) =>
@@ -159,7 +162,6 @@ function AllOrders() {
           existing.notes.push(order.note);
         }
 
-        // আপডেট ফোন বা ঠিকানা
         if (order.address) existing.address = order.address;
         if (order.phone) existing.phone = order.phone;
       }
@@ -167,7 +169,6 @@ function AllOrders() {
       dayGroups[key].totalValue += Number(order.grandTotal || 0);
     });
 
-    // অবজেক্ট থেকে অ্যারেতে রূপান্তর
     return Object.values(dayGroups)
       .map((day) => ({
         ...day,
@@ -178,7 +179,6 @@ function AllOrders() {
       .sort((a, b) => b.startTime - a.startTime);
   }, [orders]);
 
-  // টগল ডে
   const toggleDay = (key) => {
     setExpandedDays((prev) => ({
       ...prev,
@@ -186,7 +186,6 @@ function AllOrders() {
     }));
   };
 
-  // ট্যাপ দিয়ে ফুল ভিউ টগল (Tap to View Details)
   const toggleOrderDetails = (orderId) => {
     setExpandedOrders((prev) => ({
       ...prev,
@@ -194,9 +193,6 @@ function AllOrders() {
     }));
   };
 
-  // =============================
-  // Update Order Status
-  // =============================
   const updateStatus = async (id, orderStatus) => {
     try {
       const res = await axios.patch(`${API_URL}/api/orders/${id}`, {
@@ -218,9 +214,6 @@ function AllOrders() {
     }
   };
 
-  // =============================
-  // Update Payment Status
-  // =============================
   const updatePayment = async (id, paymentStatus) => {
     try {
       const res = await axios.patch(`${API_URL}/api/orders/payment/${id}`, {
@@ -242,9 +235,6 @@ function AllOrders() {
     }
   };
 
-  // =========================================================================
-  // RETURN PRODUCT / UPDATE INVOICE & RESTOCK
-  // =========================================================================
   const handleReturnItem = async (order, item) => {
     const medId = item.medicineId || item._id;
     const currentQty = Number(item.quantity);
@@ -272,12 +262,9 @@ function AllOrders() {
       confirmButtonColor: "#dc2626",
       cancelButtonText: "Cancel",
       inputValidator: (value) => {
-        if (!value || value <= 0) {
-          return "Please enter a valid quantity!";
-        }
-        if (Number(value) > currentQty) {
+        if (!value || value <= 0) return "Please enter a valid quantity!";
+        if (Number(value) > currentQty)
           return `You cannot return more than ${currentQty} units!`;
-        }
       },
     });
 
@@ -351,15 +338,15 @@ function AllOrders() {
                 2 PM - 2 PM Business Cycle
               </span>
               <span className="text-xs text-slate-400">
-                Auto-merged Multiple Customer Invoices
+                Single & Combined Invoices
               </span>
             </div>
             <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900">
               Orders Management
             </h1>
             <p className="text-xs text-slate-500">
-              Tap any order card to expand full view. Multiple orders from same
-              customer are merged into 1 invoice.
+              Tap any order card to expand. You can print individual order
+              invoices OR the combined daily invoice!
             </p>
           </div>
 
@@ -499,12 +486,10 @@ function AllOrders() {
                                         {order.customerName}
                                       </h3>
 
-                                      {/* একই কাস্টমারের একাধিক অর্ডার হলে বিশেষ ব্যাজ */}
                                       {isMultiOrder ? (
                                         <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-black text-purple-800 border border-purple-200 animate-pulse">
                                           <FaLayerGroup size={10} />
-                                          {order.orderCount} Orders Merged into
-                                          1 Invoice
+                                          {order.orderCount} Orders Today
                                         </span>
                                       ) : (
                                         <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
@@ -520,8 +505,8 @@ function AllOrders() {
                                       </span>
                                       <span>•</span>
                                       <span>
-                                        {order.items?.length || 0} unique
-                                        medicines ({totalQuantity} units)
+                                        {order.items?.length || 0} medicines (
+                                        {totalQuantity} units)
                                       </span>
                                       <span>•</span>
                                       <span>
@@ -667,6 +652,70 @@ function AllOrders() {
                                   </div>
                                 </div>
 
+                                {/* =========================================================================
+                                    ★ প্রতি অর্ডারের আলাদা আলাদা ইনভয়েস বাটন
+                                ========================================================================= */}
+                                {isMultiOrder && (
+                                  <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
+                                    <h4 className="text-xs font-black uppercase text-purple-950 mb-2.5 flex items-center gap-1.5">
+                                      <FaPrint className="text-purple-700" />
+                                      Print Individual Order Invoices (
+                                      {order.individualOrders?.length} Orders)
+                                    </h4>
+                                    <p className="text-[11px] text-purple-800 mb-3">
+                                      নিচে এই কাস্টমারের প্রতিটি আলাদা অর্ডারের
+                                      তালিকা দেওয়া হলো। আপনি চাইলে যেকোনো
+                                      অর্ডারের একক মেমো প্রিন্ট করতে পারেন:
+                                    </p>
+
+                                    <div className="grid gap-2.5 sm:grid-cols-2">
+                                      {order.individualOrders?.map(
+                                        (singleOrd, sIdx) => (
+                                          <div
+                                            key={singleOrd._id || sIdx}
+                                            className="flex items-center justify-between rounded-xl border border-purple-200 bg-white p-3 shadow-2xs"
+                                          >
+                                            <div>
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-black text-purple-800">
+                                                  #{sIdx + 1}
+                                                </span>
+                                                <span className="text-xs font-bold text-slate-800">
+                                                  {singleOrd.items?.length || 0}{" "}
+                                                  Products
+                                                </span>
+                                              </div>
+                                              <span className="text-[10px] text-slate-400 mt-0.5 block">
+                                                Time:{" "}
+                                                {new Date(
+                                                  singleOrd.orderDate,
+                                                ).toLocaleTimeString([], {
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                                })}{" "}
+                                                • Total: ৳{singleOrd.grandTotal}
+                                              </span>
+                                            </div>
+
+                                            {/* আলাদা সিঙ্গেল অর্ডারের ইনভয়েস লিংক */}
+                                            <Link
+                                              to={`/dashboard/invoice/${singleOrd._id}`}
+                                              state={{
+                                                combinedOrder: singleOrd,
+                                              }}
+                                              className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:bg-purple-700"
+                                              title="Print only this single order invoice"
+                                            >
+                                              <FaFileInvoice size={11} />
+                                              <span>Single Invoice</span>
+                                            </Link>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* COMBINED MEDICINE ITEMS LIST */}
                                 <div>
                                   <div className="mb-2 flex items-center justify-between">
@@ -757,7 +806,7 @@ function AllOrders() {
                                   </div>
                                 </div>
 
-                                {/* COMBINED INVOICE FOOTER (সরাসরি সম্পূর্ণ ডাটা state আকারে ইনভয়েসে পাঠানো হচ্ছে) */}
+                                {/* COMBINED INVOICE FOOTER */}
                                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3">
                                   <div className="text-xs text-slate-500">
                                     {isMultiOrder ? (
@@ -774,6 +823,7 @@ function AllOrders() {
                                     )}
                                   </div>
 
+                                  {/* সব অর্ডার একত্র করে ১টি ইনভয়েস প্রিন্ট করার বাটন */}
                                   <Link
                                     to={`/dashboard/invoice/${order._id}`}
                                     state={{ combinedOrder: order }}

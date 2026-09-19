@@ -10,19 +10,19 @@ function InvoiceDetails() {
   const { id } = useParams();
   const location = useLocation();
 
-  // যদি AllOrders থেকে মার্জড সব অর্ডার আসে তবে সেটিই সরাসরি নিবে
-  const passedCombinedOrder = location.state?.combinedOrder || null;
+  // AllOrders থেকে পাঠানো সিঙ্গেল অথবা কম্বাইন্ড অর্ডার ডাটা
+  const passedOrder = location.state?.combinedOrder || null;
 
-  const [order, setOrder] = useState(passedCombinedOrder);
-  const [loading, setLoading] = useState(!passedCombinedOrder);
+  const [order, setOrder] = useState(passedOrder);
+  const [loading, setLoading] = useState(!passedOrder);
 
   // ============================================
-  // LOAD INVOICE (IF NOT PASSED FROM ALLORDERS)
+  // LOAD INVOICE
   // ============================================
   useEffect(() => {
-    // যদি ইতিমধ্যেই AllOrders থেকে কম্বাইন্ড সব অর্ডার চলে এসে থাকে, তবে নতুন করে ১টি অর্ডার ফেচ করার দরকার নেই
-    if (passedCombinedOrder) {
-      setOrder(passedCombinedOrder);
+    // যদি স্টেট হিসেবে অর্ডার ডাটা চলে এসে থাকে তবে পুনরায় ফেচ করার দরকার নেই
+    if (passedOrder) {
+      setOrder(passedOrder);
       setLoading(false);
       return;
     }
@@ -33,7 +33,7 @@ function InvoiceDetails() {
     }
 
     loadOrder();
-  }, [id, passedCombinedOrder]);
+  }, [id, passedOrder]);
 
   const loadOrder = async () => {
     try {
@@ -70,8 +70,6 @@ function InvoiceDetails() {
 
     try {
       const items = order.items || [];
-
-      // ওষুধের সংখ্যার ওপর ভিত্তি করে ডাইনামিক পেজ লেন্থ ক্যালকুলেশন (যাতে কোনো মেডিসিন কেটে না যায়)
       const estimatedHeight = Math.max(180, 100 + items.length * 14);
 
       const pdf = new jsPDF({
@@ -123,7 +121,7 @@ function InvoiceDetails() {
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(0, 0, 0);
 
-      // PDF HEADER
+      // HEADER
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(15);
       pdf.text("NOVACARE", pageWidth / 2, y, { align: "center" });
@@ -147,7 +145,6 @@ function InvoiceDetails() {
       pdf.setFontSize(10);
       pdf.text("RETAIL INVOICE", pageWidth / 2, y, { align: "center" });
 
-      // যদি একাধিক অর্ডার মার্জ হয়ে থাকে
       if (order.orderCount && order.orderCount > 1) {
         y += 3.5;
         pdf.setFontSize(6.5);
@@ -215,7 +212,6 @@ function InvoiceDetails() {
       pdf.line(margin, y, pageWidth - margin, y);
       y += 4;
 
-      // TABLE HEADER
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(7);
       pdf.text("SL", margin, y);
@@ -228,7 +224,6 @@ function InvoiceDetails() {
       pdf.line(margin, y, pageWidth - margin, y);
       y += 3.5;
 
-      // MEDICINES ROWS
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(7);
 
@@ -265,7 +260,6 @@ function InvoiceDetails() {
       pdf.line(margin, y, pageWidth - margin, y);
       y += 4.5;
 
-      // TOTALS
       pdf.setFontSize(7.5);
       pdf.text("Total:", 48, y);
       pdf.text(`BDT ${subtotal.toFixed(2)}`, 75, y, { align: "right" });
@@ -415,9 +409,13 @@ function InvoiceDetails() {
           {/* TITLE */}
           <div className="text-center">
             <h2 className="text-xl font-bold tracking-tight">RETAIL INVOICE</h2>
-            {isCombined && (
+            {isCombined ? (
               <span className="inline-block mt-0.5 rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-black text-purple-800">
                 COMBINED 1-INVOICE ({order.orderCount} ORDERS)
+              </span>
+            ) : (
+              <span className="inline-block mt-0.5 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                SINGLE ORDER INVOICE
               </span>
             )}
           </div>
@@ -466,7 +464,7 @@ function InvoiceDetails() {
 
           <div className="my-2 border-t border-dashed border-slate-400" />
 
-          {/* MEDICINES LIST (সব ওষুধ একসাথে আসবে) */}
+          {/* MEDICINES LIST */}
           <div className="divide-y divide-dashed divide-slate-200">
             {items.map((item, index) => {
               const unitPrice =
@@ -576,7 +574,7 @@ function InvoiceDetails() {
         </div>
       </div>
 
-      {/* PRINT CSS STYLES (PREVENTS CUTTING OFF MEDICINES) */}
+      {/* PRINT CSS STYLES */}
       <style>{`
         @media print {
           @page {
