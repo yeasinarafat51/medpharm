@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { Link } from "react-router-dom";
 
-const API = " https://medpharm-server-3.onrender.com";
+const API = "https://medpharm-server-3.onrender.com";
 
 const companies = [
   { name: "All Medicines", value: "" },
@@ -16,28 +16,102 @@ const companies = [
   { name: "Aristopharma", value: "Aristopharma" },
 ];
 
+// ইন-মেমোরি ও লোকাল ক্যাশ হেল্পার (যাতে ০ সেকেন্ডে ডাটা দেখায়)
+const MEMORY_CACHE = new Map();
+
+const getCachedData = (key) => {
+  if (MEMORY_CACHE.has(key)) return MEMORY_CACHE.get(key);
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      MEMORY_CACHE.set(key, parsed);
+      return parsed;
+    }
+  } catch (e) {
+    console.warn("Cache read error", e);
+  }
+  return null;
+};
+
+const setCachedData = (key, data) => {
+  MEMORY_CACHE.set(key, data);
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.warn("Cache write error", e);
+  }
+};
+
 const AllMedicine = () => {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [company, setCompany] = useState("");
   const [sort, setSort] = useState("asc");
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const limit = 5;
+  const limit = 8;
+  const abortControllerRef = useRef(null);
 
-  // =========================
-  // LOAD MEDICINES
-  // =========================
-  const loadMedicine = async () => {
-    try {
+  // =========================================================
+  // ১. সার্ভারকে সজাগ রাখার অটো-পিং (Keep Server Awake)
+  // =========================================================
+  useEffect(() => {
+    const keepAlive = setInterval(
+      () => {
+        axios.get(`${API}/api/medicines?limit=1`).catch(() => {});
+      },
+      4 * 60 * 1000,
+    ); // প্রতি ৪ মিনিট পর পর পিং করবে
+
+    return () => clearInterval(keepAlive);
+  }, []);
+
+  // =========================================================
+  // ২. লেখার সাথে সাথে লাইভ সার্চ (Debounce: 250ms) - রিলোড ছাড়া
+  // =========================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // =========================================================
+  // ৩. সুপার-ফাস্ট ডাটা লোড (Instant Cache + Background Fetch)
+  // =========================================================
+  const loadMedicine = async (forceRefresh = false) => {
+    const cacheKey = `meds_v1_${debouncedSearch.trim()}_${company.trim()}_${page}_${sort}_${limit}`;
+
+    // আগের কোনো পেন্ডিং রিকুয়েস্ট থাকলে ক্যানসেল করে নতুনটা চালাবে
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // স্টেপ ১: ক্যাশে ডাটা থাকলে ০ সেকেন্ডে সাথে সাথে স্ক্রিনে দেখিয়ে দিবে!
+    const cached = getCachedData(cacheKey);
+    if (cached && !forceRefresh) {
+      setMedicines(cached.medicines || []);
+      setTotalPages(cached.totalPages || 1);
+      setLoading(false);
+      setIsSyncing(true); // ব্যাকগ্রাউন্ডে আপডেট হচ্ছে
+    } else {
       setLoading(true);
+    }
 
+    try {
       const params = new URLSearchParams({
-        search: search.trim(),
+        search: debouncedSearch.trim(),
         company: company.trim(),
         page: String(page),
         limit: String(limit),
@@ -46,55 +120,69 @@ const AllMedicine = () => {
 
       const response = await axios.get(
         `${API}/api/medicines?${params.toString()}`,
+        { signal: controller.signal },
       );
 
       if (response.data?.success) {
-        setMedicines(response.data.medicines || []);
-
-        setTotalPages(
+        const meds = response.data.medicines || [];
+        const pages =
           Number(response.data.totalPages) > 0
             ? Number(response.data.totalPages)
-            : 1,
-        );
-      } else {
+            : 1;
+
+        setMedicines(meds);
+        setTotalPages(pages);
+
+        // ক্যাশে সেভ করে রাখা
+        setCachedData(cacheKey, { medicines: meds, totalPages: pages });
+
+        // পরের পেজের ডাটা আগাম লোড করে রাখা (Prefetch Next Page)
+        if (page < pages) {
+          const nextParams = new URLSearchParams({
+            search: debouncedSearch.trim(),
+            company: company.trim(),
+            page: String(page + 1),
+            limit: String(limit),
+            sort,
+          });
+          const nextKey = `meds_v1_${debouncedSearch.trim()}_${company.trim()}_${
+            page + 1
+          }_${sort}_${limit}`;
+
+          if (!MEMORY_CACHE.has(nextKey)) {
+            axios
+              .get(`${API}/api/medicines?${nextParams.toString()}`)
+              .then((res) => {
+                if (res.data?.success) {
+                  setCachedData(nextKey, {
+                    medicines: res.data.medicines || [],
+                    totalPages: pages,
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        }
+      } else if (!cached) {
         setMedicines([]);
         setTotalPages(1);
       }
     } catch (error) {
+      if (axios.isCancel(error) || error.name === "CanceledError") return;
       console.error("Medicine Load Error:", error);
-
-      setMedicines([]);
-      setTotalPages(1);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Medicine load করা যায়নি!",
-      });
+      if (!cached) {
+        setMedicines([]);
+        setTotalPages(1);
+      }
     } finally {
       setLoading(false);
+      setIsSyncing(false);
     }
   };
 
-  // =========================
-  // LOAD DATA
-  // =========================
   useEffect(() => {
     loadMedicine();
-  }, [page, company, sort]);
-
-  // =========================
-  // SEARCH
-  // =========================
-  const handleSearch = (e) => {
-    e.preventDefault();
-
-    setPage(1);
-
-    // Search change হওয়ার পর manually load করার দরকার নেই
-    // search dependency useEffect-এ দিলে typing-এর সাথে সাথে API call হবে।
-    loadMedicine();
-  };
+  }, [debouncedSearch, company, sort, page]);
 
   // =========================
   // COMPANY FILTER
@@ -105,7 +193,7 @@ const AllMedicine = () => {
   };
 
   // =========================
-  // DELETE MEDICINE
+  // DELETE MEDICINE (Optimistic Instant Delete)
   // =========================
   const handleDelete = async (id) => {
     const result = await Swal.fire({
@@ -115,26 +203,30 @@ const AllMedicine = () => {
       showCancelButton: true,
       confirmButtonText: "Yes, Delete",
       cancelButtonText: "Cancel",
+      confirmButtonColor: "#dc2626",
     });
 
-    if (!result.isConfirmed) {
-      return;
-    }
+    if (!result.isConfirmed) return;
+
+    // সাথে সাথে স্ক্রিন থেকে সরিয়ে দেওয়া (যাতে ইউজারকে অপেক্ষা করতে না হয়)
+    const previousMedicines = [...medicines];
+    setMedicines((prev) => prev.filter((item) => item._id !== id));
 
     try {
       const response = await axios.delete(`${API}/api/medicines/${id}`);
 
       if (response.data?.success) {
+        MEMORY_CACHE.clear();
         Swal.fire({
           icon: "success",
           title: "Deleted!",
           text: "Medicine successfully deleted.",
-          timer: 1500,
+          timer: 1200,
           showConfirmButton: false,
         });
-
-        loadMedicine();
+        loadMedicine(true);
       } else {
+        setMedicines(previousMedicines);
         Swal.fire({
           icon: "error",
           title: "Error",
@@ -143,7 +235,7 @@ const AllMedicine = () => {
       }
     } catch (error) {
       console.error("Delete Medicine Error:", error);
-
+      setMedicines(previousMedicines);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -153,82 +245,60 @@ const AllMedicine = () => {
   };
 
   // =========================
-  // SEARCH INPUT
-  // =========================
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value);
-  };
-
-  // =========================
-  // SEARCH ENTER
-  // =========================
-  const handleSearchKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-
-      setPage(1);
-      loadMedicine();
-    }
-  };
-
-  // =========================
-  // PREVIOUS PAGE
+  // PAGINATION HANDLERS
   // =========================
   const handlePrevious = () => {
-    if (page > 1) {
-      setPage((prev) => prev - 1);
-    }
+    if (page > 1) setPage((prev) => prev - 1);
   };
 
-  // =========================
-  // NEXT PAGE
-  // =========================
   const handleNext = () => {
-    if (page < totalPages) {
-      setPage((prev) => prev + 1);
-    }
+    if (page < totalPages) setPage((prev) => prev + 1);
   };
 
   return (
-    <div className="p-4 md:p-6">
-      {/* =========================
-          HEADER
-      ========================= */}
+    <div className="p-4 md:p-6 min-h-screen bg-slate-50">
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-            All Medicines
-          </h1>
-
-          <p className="text-gray-500 mt-1">Manage all medicines from here.</p>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              All Medicines
+            </h1>
+            {isSyncing && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 border border-blue-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-ping"></span>
+                Syncing...
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Instant cached loading & real-time search without page reload.
+          </p>
         </div>
 
         <Link
           to="/dashboard/add-medicine"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium text-center transition"
+          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition"
         >
-          + Add Medicine
+          <span>+ Add Medicine</span>
         </Link>
       </div>
 
-      {/* =========================
-          COMPANY BUTTONS
-      ========================= */}
-      <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">
+      {/* COMPANY FILTER BUTTONS */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-4 mb-5">
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
           Filter By Company
         </h2>
-
         <div className="flex flex-wrap gap-2">
           {companies.map((companyItem) => (
             <button
               key={companyItem.value}
               type="button"
               onClick={() => handleCompanyChange(companyItem.value)}
-              className={`px-4 py-2 rounded-lg border font-medium transition-all duration-200 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 company === companyItem.value
-                  ? "bg-blue-600 text-white border-blue-600 shadow"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {companyItem.name}
@@ -237,113 +307,95 @@ const AllMedicine = () => {
         </div>
       </div>
 
-      {/* =========================
-          SEARCH + SORT
-      ========================= */}
-      <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* Search */}
-          <div className="flex-1">
+      {/* LIVE SEARCH & SORT */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-4 mb-5">
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          className="flex flex-col md:flex-row gap-3 items-center"
+        >
+          <div className="relative flex-1 w-full">
             <input
               type="text"
               value={search}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="Search medicine, company or generic name..."
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Type medicine, company, or generic name to search instantly..."
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
             />
+            <span className="absolute left-3.5 top-3 text-slate-400 text-xs">
+              🔍
+            </span>
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-700 bg-slate-200/80 rounded-full h-5 w-5 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
-          {/* Search Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setPage(1);
-              loadMedicine();
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition"
-          >
-            Search
-          </button>
-
-          {/* Sort */}
-          <select
-            value={sort}
-            onChange={(e) => {
-              setSort(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="asc">A → Z</option>
-            <option value="desc">Z → A</option>
-          </select>
-        </div>
+          <div className="w-full md:w-auto">
+            <select
+              value={sort}
+              onChange={(e) => {
+                setSort(e.target.value);
+                setPage(1);
+              }}
+              className="w-full md:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-blue-500 focus:bg-white"
+            >
+              <option value="asc">A → Z</option>
+              <option value="desc">Z → A</option>
+            </select>
+          </div>
+        </form>
       </div>
 
-      {/* =========================
-          SELECTED COMPANY
-      ========================= */}
+      {/* SELECTED COMPANY BADGE */}
       {company && (
-        <div className="mb-4">
-          <span className="text-gray-600">Showing medicines from:</span>
-
-          <span className="ml-2 font-bold text-blue-600">
+        <div className="mb-4 flex items-center gap-2 text-xs text-slate-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl w-fit">
+          <span>Showing medicines from:</span>
+          <b className="text-blue-700 font-bold">
             {companies.find((item) => item.value === company)?.name || company}
-          </span>
+          </b>
+          <button
+            type="button"
+            onClick={() => setCompany("")}
+            className="ml-1 text-blue-800 hover:text-red-600 font-black"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* =========================
-          TABLE
-      ========================= */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      {/* TABLE */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead className="bg-gray-100">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  #
+                <th className="px-4 py-3">#</th>
+                <th className="px-4 py-3">Medicine</th>
+                <th className="px-4 py-3">Company</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3 text-right">Purchase (৳)</th>
+                <th className="px-4 py-3 text-right">MRP (৳)</th>
+                <th className="px-4 py-3 text-center">Discount</th>
+                <th className="px-4 py-3 text-right font-black text-slate-800">
+                  Selling (৳)
                 </th>
-
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Medicine
-                </th>
-
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Company
-                </th>
-
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Category
-                </th>
-
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Purchase
-                </th>
-
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Selling
-                </th>
-
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Stock
-                </th>
-
-                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
-                  Actions
-                </th>
+                <th className="px-4 py-3 text-center">Stock</th>
+                <th className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
 
-            <tbody>
-              {loading ? (
+            <tbody className="divide-y divide-slate-100">
+              {loading && medicines.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-10">
-                    <div className="flex justify-center items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-
-                      <span className="text-gray-500">
+                  <td colSpan="10" className="text-center py-12">
+                    <div className="flex flex-col justify-center items-center gap-2">
+                      <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs font-bold text-slate-400">
                         Loading medicines...
                       </span>
                     </div>
@@ -351,140 +403,156 @@ const AllMedicine = () => {
                 </tr>
               ) : medicines.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-10">
-                    <p className="text-gray-500 text-lg">No medicine found.</p>
-
+                  <td colSpan="10" className="text-center py-12 text-slate-400">
+                    <p className="text-base font-bold text-slate-600">
+                      No medicines found.
+                    </p>
                     {company && (
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         এই company-এর কোনো medicine পাওয়া যায়নি।
                       </p>
                     )}
                   </td>
                 </tr>
               ) : (
-                medicines.map((medicine, index) => (
-                  <tr
-                    key={medicine._id}
-                    className="border-t hover:bg-gray-50 transition"
-                  >
-                    {/* Number */}
-                    <td className="px-4 py-4 text-sm text-gray-700">
-                      {(page - 1) * limit + index + 1}
-                    </td>
+                medicines.map((medicine, index) => {
+                  const purchasePrice = Number(medicine.purchasePrice || 0);
+                  const mrpPrice = Number(
+                    medicine.mrp || medicine.sellingPrice || 0,
+                  );
+                  const discountVal = Number(medicine.discount || 0);
+                  const sellingPrice = Number(medicine.sellingPrice || 0);
 
-                    {/* Medicine */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={
-                            medicine.image ||
-                            "https://placehold.co/60x60?text=Medicine"
-                          }
-                          alt={medicine.medicineName || "Medicine"}
-                          className="w-12 h-12 rounded-lg object-cover border"
-                          onError={(e) => {
-                            e.currentTarget.src =
-                              "https://placehold.co/60x60?text=Medicine";
-                          }}
-                        />
+                  return (
+                    <tr
+                      key={medicine._id}
+                      className="hover:bg-slate-50/70 transition"
+                    >
+                      <td className="px-4 py-3.5 text-slate-400 font-medium">
+                        {(page - 1) * limit + index + 1}
+                      </td>
 
-                        <div>
-                          <p className="font-semibold text-gray-800">
-                            {medicine.medicineName || "N/A"}
-                          </p>
-
-                          <p className="text-xs text-gray-500">
-                            {medicine.genericName || "No generic name"}
-                          </p>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={
+                              medicine.image ||
+                              "https://placehold.co/60x60?text=Medicine"
+                            }
+                            alt={medicine.medicineName || "Medicine"}
+                            loading="lazy"
+                            className="w-10 h-10 rounded-xl object-contain border border-slate-100 bg-slate-50 p-1"
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                "https://placehold.co/60x60?text=Medicine";
+                            }}
+                          />
+                          <div>
+                            <p className="font-bold text-slate-900 leading-tight">
+                              {medicine.medicineName || "N/A"}
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              {medicine.genericName || "No generic name"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Company */}
-                    <td className="px-4 py-4 text-sm text-gray-700">
-                      {medicine.company || "N/A"}
-                    </td>
+                      <td className="px-4 py-3.5 text-slate-600 font-medium">
+                        {medicine.company || "N/A"}
+                      </td>
 
-                    {/* Category */}
-                    <td className="px-4 py-4 text-sm text-gray-700">
-                      {medicine.category || "N/A"}
-                    </td>
+                      <td className="px-4 py-3.5 text-slate-500">
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px]">
+                          {medicine.category || "General"}
+                        </span>
+                      </td>
 
-                    {/* Purchase Price */}
-                    <td className="px-4 py-4 text-sm font-medium text-gray-700">
-                      ৳{Number(medicine.purchasePrice || 0).toFixed(2)}
-                    </td>
+                      <td className="px-4 py-3.5 text-right font-medium text-slate-600">
+                        ৳{purchasePrice.toFixed(2)}
+                      </td>
 
-                    {/* Selling Price */}
-                    <td className="px-4 py-4 text-sm font-semibold text-green-600">
-                      ৳{Number(medicine.sellingPrice || 0).toFixed(2)}
-                    </td>
+                      <td className="px-4 py-3.5 text-right font-bold text-slate-700">
+                        ৳{mrpPrice.toFixed(2)}
+                      </td>
 
-                    {/* Stock */}
-                    <td className="px-4 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          Number(medicine.stock || 0) > 0
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {medicine.stock || 0}
-                      </span>
-                    </td>
+                      <td className="px-4 py-3.5 text-center">
+                        {discountVal > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[10px] font-black text-rose-600">
+                            {discountVal}%
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">0%</span>
+                        )}
+                      </td>
 
-                    {/* Actions */}
-                    <td className="px-4 py-4">
-                      <div className="flex justify-center items-center gap-2">
-                        <Link
-                          to={`/dashboard/update-medicine/${medicine._id}`}
-                          className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium transition"
+                      <td className="px-4 py-3.5 text-right font-black text-emerald-700 text-sm">
+                        ৳{sellingPrice.toFixed(2)}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-center">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                            Number(medicine.stock || 0) > 10
+                              ? "bg-emerald-100 text-emerald-800"
+                              : Number(medicine.stock || 0) > 0
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-rose-100 text-rose-800"
+                          }`}
                         >
-                          Edit
-                        </Link>
+                          {medicine.stock || 0} pcs
+                        </span>
+                      </td>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(medicine._id)}
-                          className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex justify-center items-center gap-1.5">
+                          <Link
+                            to={`/dashboard/update-medicine/${medicine._id}`}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition"
+                          >
+                            Edit
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(medicine._id)}
+                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* =========================
-            PAGINATION
-        ========================= */}
-        {!loading && medicines.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t">
-            <p className="text-sm text-gray-500">
-              Page <span className="font-semibold text-gray-800">{page}</span>{" "}
-              of{" "}
-              <span className="font-semibold text-gray-800">{totalPages}</span>
+        {/* PAGINATION */}
+        {medicines.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50">
+            <p className="text-xs text-slate-500">
+              Page <b className="text-slate-800">{page}</b> of{" "}
+              <b className="text-slate-800">{totalPages}</b>
             </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handlePrevious}
                 disabled={page === 1}
-                className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition ${
                   page === 1
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
                 }`}
               >
                 Previous
               </button>
 
-              <span className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">
+              <span className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-black">
                 {page}
               </span>
 
@@ -492,10 +560,10 @@ const AllMedicine = () => {
                 type="button"
                 onClick={handleNext}
                 disabled={page >= totalPages}
-                className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition ${
                   page >= totalPages
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
                 }`}
               >
                 Next

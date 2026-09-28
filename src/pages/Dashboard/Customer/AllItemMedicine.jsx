@@ -47,6 +47,7 @@ function AllItemMedicine() {
   const companies = [
     { name: "All Medicines", value: "" },
     { name: "Square", value: "Square" },
+    { name: "Unimed Unihealth", value: "Unimed Unihealth" },
     { name: "Aci", value: "Aci" },
     { name: "Popular", value: "Popular" },
     { name: "Ibn-Sina", value: "Ibnsina" },

@@ -8,49 +8,73 @@ import {
   FaBoxes,
   FaPhoneAlt,
   FaMapMarkerAlt,
-  FaCalendarAlt,
   FaClock,
   FaChevronDown,
   FaChevronUp,
   FaReceipt,
   FaLayerGroup,
   FaPrint,
+  FaSyncAlt,
 } from "react-icons/fa";
 
 const API_URL =
   import.meta.env.VITE_API_URL || "https://medpharm-server-3.onrender.com";
 
-function AllOrders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ORDERS_CACHE_KEY = "novacare_orders_cache_v1";
 
-  // দিন ভিত্তিক সেকশন টগল
+function AllOrders() {
+  // ১. শুরুতেই ক্যাশ থেকে ডাটা নিয়ে নেওয়া হচ্ছে, যাতে লোডিং ছাড়াই সাথে সাথে দেখায়!
+  const [orders, setOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem(ORDERS_CACHE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem(ORDERS_CACHE_KEY);
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const [expandedDays, setExpandedDays] = useState({});
-  // কার্ডে ট্যাপ দিলে ফুল ভিউ দেখানোর জন্য
   const [expandedOrders, setExpandedOrders] = useState({});
 
   // =============================
-  // Load Orders
+  // Load Orders (Instant Cache + Background Sync)
   // =============================
-  const loadOrders = async () => {
+  const loadOrders = async (showSpinner = false) => {
     try {
-      setLoading(true);
+      if (showSpinner && orders.length === 0) {
+        setLoading(true);
+      } else {
+        setIsSyncing(true);
+      }
+
       const res = await axios.get(`${API_URL}/api/orders`);
 
       if (res.data?.success) {
-        setOrders(res.data.orders || []);
-      } else {
-        setOrders([]);
+        const fetchedOrders = res.data.orders || [];
+        setOrders(fetchedOrders);
+        try {
+          localStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify(fetchedOrders));
+        } catch (e) {
+          console.warn("Storage quota exceeded", e);
+        }
       }
     } catch (error) {
       console.error("Failed to load orders:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Failed to load orders",
-        text: error.response?.data?.message || "Server connection error",
-      });
+      if (orders.length === 0) {
+        Swal.fire({
+          icon: "error",
+          title: "Failed to load orders",
+          text: error.response?.data?.message || "Server connection error",
+        });
+      }
     } finally {
       setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -85,12 +109,7 @@ function AllOrders() {
       cycleEnd,
     )} 02:00 PM`;
 
-    return {
-      key,
-      cycleStart,
-      cycleEnd,
-      label,
-    };
+    return { key, cycleStart, cycleEnd, label };
   };
 
   // =========================================================================
@@ -112,7 +131,6 @@ function AllOrders() {
         };
       }
 
-      // কাস্টমার চিহ্নিত করার কি
       const customerKey = (
         order.customerEmail ||
         order.phone ||
@@ -123,7 +141,6 @@ function AllOrders() {
         .trim();
 
       if (!dayGroups[key].customerMap[customerKey]) {
-        // নতুন কাস্টমার এন্ট্রি
         dayGroups[key].customerMap[customerKey] = {
           ...order,
           originalOrderIds: [order._id],
@@ -131,17 +148,15 @@ function AllOrders() {
           items: (order.items || []).map((it) => ({ ...it })),
           notes: order.note ? [order.note] : [],
           grandTotal: Number(order.grandTotal || 0),
-          individualOrders: [{ ...order }], // প্রতিটি একক অর্ডার সংরক্ষণ
+          individualOrders: [{ ...order }],
         };
       } else {
-        // একই কাস্টমার আবার অর্ডার করেছে
         const existing = dayGroups[key].customerMap[customerKey];
         existing.originalOrderIds.push(order._id);
         existing.orderCount += 1;
         existing.grandTotal += Number(order.grandTotal || 0);
-        existing.individualOrders.push({ ...order }); // আলাদা একক অর্ডার হিসেবে যুক্ত
+        existing.individualOrders.push({ ...order });
 
-        // মার্জড আইটেম লিস্ট আপডেট
         (order.items || []).forEach((newItem) => {
           const found = existing.items.find(
             (it) =>
@@ -194,6 +209,11 @@ function AllOrders() {
   };
 
   const updateStatus = async (id, orderStatus) => {
+    // সাথে সাথে লোকাল স্টেট আপডেট (Instant UI feedback)
+    setOrders((prev) =>
+      prev.map((o) => (o._id === id ? { ...o, orderStatus } : o)),
+    );
+
     try {
       const res = await axios.patch(`${API_URL}/api/orders/${id}`, {
         orderStatus,
@@ -203,7 +223,7 @@ function AllOrders() {
         Swal.fire({
           icon: "success",
           title: "Order Status Updated",
-          timer: 1200,
+          timer: 1000,
           showConfirmButton: false,
         });
         loadOrders();
@@ -211,10 +231,15 @@ function AllOrders() {
     } catch (error) {
       console.error(error);
       Swal.fire({ icon: "error", title: "Update Failed" });
+      loadOrders();
     }
   };
 
   const updatePayment = async (id, paymentStatus) => {
+    setOrders((prev) =>
+      prev.map((o) => (o._id === id ? { ...o, paymentStatus } : o)),
+    );
+
     try {
       const res = await axios.patch(`${API_URL}/api/orders/payment/${id}`, {
         paymentStatus,
@@ -224,7 +249,7 @@ function AllOrders() {
         Swal.fire({
           icon: "success",
           title: "Payment Status Updated",
-          timer: 1200,
+          timer: 1000,
           showConfirmButton: false,
         });
         loadOrders();
@@ -232,6 +257,7 @@ function AllOrders() {
     } catch (error) {
       console.error(error);
       Swal.fire({ icon: "error", title: "Payment Update Failed" });
+      loadOrders();
     }
   };
 
@@ -252,11 +278,7 @@ function AllOrders() {
       `,
       input: "number",
       inputValue: 1,
-      inputAttributes: {
-        min: 1,
-        max: currentQty,
-        step: 1,
-      },
+      inputAttributes: { min: 1, max: currentQty, step: 1 },
       showCancelButton: true,
       confirmButtonText: "Confirm Return",
       confirmButtonColor: "#dc2626",
@@ -309,7 +331,7 @@ function AllOrders() {
     }
   };
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -337,20 +359,34 @@ function AllOrders() {
               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">
                 2 PM - 2 PM Business Cycle
               </span>
-              <span className="text-xs text-slate-400">
-                Single & Combined Invoices
-              </span>
+              {isSyncing && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 border border-blue-200">
+                  <FaSyncAlt className="animate-spin" size={9} />
+                  Syncing Latest...
+                </span>
+              )}
             </div>
             <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900">
               Orders Management
             </h1>
             <p className="text-xs text-slate-500">
-              Tap any order card to expand. You can print individual order
-              invoices OR the combined daily invoice!
+              Instant cached view. Print individual order invoices OR the
+              combined daily invoice!
             </p>
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => loadOrders()}
+              className="rounded-2xl border border-slate-200 bg-white p-3 text-slate-600 hover:bg-slate-100 shadow-2xs transition"
+              title="Refresh Orders"
+            >
+              <FaSyncAlt
+                className={isSyncing ? "animate-spin text-emerald-600" : ""}
+              />
+            </button>
+
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-2xs text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">
                 Total Placed
@@ -468,13 +504,12 @@ function AllOrders() {
                             key={order._id}
                             className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition duration-200 hover:shadow-md"
                           >
-                            {/* CLICKABLE CARD HEADER (ট্যাপ দিলে ফুল ভিউ দেখাবে) */}
+                            {/* CLICKABLE CARD HEADER */}
                             <div
                               onClick={() => toggleOrderDetails(order._id)}
                               className="cursor-pointer p-4 sm:p-5 transition hover:bg-slate-50/70"
                             >
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                {/* Left Side: Customer & Invoice Info */}
                                 <div className="flex items-start gap-3.5">
                                   <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                                     <FaReceipt size={18} />
@@ -487,7 +522,7 @@ function AllOrders() {
                                       </h3>
 
                                       {isMultiOrder ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-black text-purple-800 border border-purple-200 animate-pulse">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-black text-purple-800 border border-purple-200">
                                           <FaLayerGroup size={10} />
                                           {order.orderCount} Orders Today
                                         </span>
@@ -521,7 +556,6 @@ function AllOrders() {
                                   </div>
                                 </div>
 
-                                {/* Right Side: Total Amount & Expand Trigger */}
                                 <div className="flex items-center justify-between sm:justify-end gap-5 border-t border-slate-100 pt-3 sm:border-0 sm:pt-0">
                                   <div className="text-left sm:text-right">
                                     <span className="block text-[10px] uppercase font-bold text-slate-400">
@@ -557,10 +591,9 @@ function AllOrders() {
                               </div>
                             </div>
 
-                            {/* FULL DETAILS VIEW (ট্যাপ করলে প্রদর্শিত হবে) */}
+                            {/* FULL DETAILS VIEW */}
                             {isExpanded && (
                               <div className="border-t border-slate-100 bg-slate-50/80 p-5 space-y-5">
-                                {/* CUSTOMER ADDRESS & STATUS CONTROLS */}
                                 <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
                                   <div>
                                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
@@ -591,7 +624,6 @@ function AllOrders() {
                                     </div>
                                   </div>
 
-                                  {/* Quick Status Modifiers */}
                                   <div>
                                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                                       Update Order Status
@@ -652,9 +684,7 @@ function AllOrders() {
                                   </div>
                                 </div>
 
-                                {/* =========================================================================
-                                    ★ প্রতি অর্ডারের আলাদা আলাদা ইনভয়েস বাটন
-                                ========================================================================= */}
+                                {/* প্রতি অর্ডারের আলাদা আলাদা ইনভয়েস বাটন */}
                                 {isMultiOrder && (
                                   <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
                                     <h4 className="text-xs font-black uppercase text-purple-950 mb-2.5 flex items-center gap-1.5">
@@ -697,14 +727,12 @@ function AllOrders() {
                                               </span>
                                             </div>
 
-                                            {/* আলাদা সিঙ্গেল অর্ডারের ইনভয়েস লিংক */}
                                             <Link
                                               to={`/dashboard/invoice/${singleOrd._id}`}
                                               state={{
                                                 combinedOrder: singleOrd,
                                               }}
                                               className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:bg-purple-700"
-                                              title="Print only this single order invoice"
                                             >
                                               <FaFileInvoice size={11} />
                                               <span>Single Invoice</span>
@@ -792,7 +820,6 @@ function AllOrders() {
                                                     )
                                                   }
                                                   className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
-                                                  title="Return/Refund item"
                                                 >
                                                   <FaUndo size={9} />
                                                   <span>Return</span>
@@ -823,7 +850,6 @@ function AllOrders() {
                                     )}
                                   </div>
 
-                                  {/* সব অর্ডার একত্র করে ১টি ইনভয়েস প্রিন্ট করার বাটন */}
                                   <Link
                                     to={`/dashboard/invoice/${order._id}`}
                                     state={{ combinedOrder: order }}
