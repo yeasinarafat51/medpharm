@@ -49,12 +49,13 @@ function AllItemMedicine() {
     { name: "Square", value: "Square" },
     { name: "Unimed Unihealth", value: "Unimed Unihealth" },
     { name: "Aci", value: "Aci" },
-    { name: "Popular", value: "Popular" },
-    { name: "Ibn-Sina", value: "Ibnsina" },
+
     { name: "Opsonin", value: "Opsonin" },
     { name: "SKF", value: "SKF" },
     { name: "Radiant", value: "Radiant" },
     { name: "Aristopharma", value: "Aristopharma" },
+    { name: "Popular", value: "Popular" },
+    { name: "Ibn-Sina", value: "Ibnsina" },
   ];
 
   // =====================================================

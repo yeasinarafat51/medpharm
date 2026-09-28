@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import useCart from "../../hooks/useCart";
+import axios from "axios";
+import Swal from "sweetalert2";
 import {
   FaPlus,
   FaMinus,
@@ -9,13 +12,105 @@ import {
   FaTruck,
   FaRegCheckCircle,
   FaLock,
-  FaGift,
+  FaExclamationTriangle,
 } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://medpharm-server-3.onrender.com";
 
 function Cart() {
   const { cart, increaseQuantity, decreaseQuantity, removeFromCart } =
     useCart();
+  const navigate = useNavigate();
+
+  // সার্ভার থেকে সর্বশেষ স্টক রাখার স্টেট (যদি কার্ট আইটেমে stock না থাকে বা আপডেট হয়)
+  const [stockMap, setStockMap] = useState({});
+
+  useEffect(() => {
+    const fetchLatestStock = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/medicines?limit=1000`);
+        const list = res.data?.medicines || res.data || [];
+        if (Array.isArray(list)) {
+          const map = {};
+          list.forEach((med) => {
+            if (med?._id !== undefined && med?.stock !== undefined) {
+              map[med._id] = Number(med.stock);
+            }
+          });
+          setStockMap(map);
+        }
+      } catch (err) {
+        console.error("Stock check error:", err);
+      }
+    };
+
+    if (cart.length > 0) {
+      fetchLatestStock();
+    }
+  }, [cart.length]);
+
+  // নির্দিষ্ট আইটেমের সর্বোচ্চ স্টক বের করার ফাংশন
+  const getAvailableStock = (item) => {
+    if (stockMap[item._id] !== undefined) {
+      return Number(stockMap[item._id]);
+    }
+    if (item.stock !== undefined && item.stock !== null) {
+      return Number(item.stock);
+    }
+    if (item.availableStock !== undefined) {
+      return Number(item.availableStock);
+    }
+    return null; // স্টক ডাটা না পাওয়া গেলে
+  };
+
+  // স্টক চেক করে Quantity বাড়ানোর ফাংশন
+  const handleIncreaseQuantity = (item) => {
+    const maxStock = getAvailableStock(item);
+    const currentQty = Number(item.quantity || 0);
+
+    if (maxStock !== null && currentQty >= maxStock) {
+      Swal.fire({
+        icon: "warning",
+        title: "Stock Limit Reached!",
+        text: `"${item.medicineName}" স্টকে সর্বোচ্চ ${maxStock} টি আছে। এর বেশি নেওয়া যাবে না।`,
+        confirmButtonColor: "#059669",
+      });
+      return;
+    }
+
+    increaseQuantity(item._id);
+  };
+
+  // কোনো আইটেম স্টকের চেয়ে বেশি আছে কিনা চেক
+  const hasOverStockItem = cart.some((item) => {
+    const maxStock = getAvailableStock(item);
+    return maxStock !== null && Number(item.quantity || 0) > maxStock;
+  });
+
+  // চেকআউট বাটনে ক্লিক করলে স্টক ভ্যালিডেশন
+  const handleProceedCheckout = (e) => {
+    e.preventDefault();
+
+    const invalidItem = cart.find((item) => {
+      const maxStock = getAvailableStock(item);
+      return maxStock !== null && Number(item.quantity || 0) > maxStock;
+    });
+
+    if (invalidItem) {
+      const maxStock = getAvailableStock(invalidItem);
+      Swal.fire({
+        icon: "error",
+        title: "স্টকের চেয়ে বেশি পরিমাণ!",
+        text: `"${invalidItem.medicineName}" স্টকে আছে ${maxStock} টি, কিন্তু আপনার কার্টে আছে ${invalidItem.quantity} টি। অনুগ্রহ করে পরিমাণ কমান।`,
+        confirmButtonColor: "#059669",
+      });
+      return;
+    }
+
+    navigate("/checkout");
+  };
 
   // গ্র্যান্ড টোটাল
   const grandTotal = cart.reduce(
@@ -98,7 +193,7 @@ function Cart() {
           </Link>
         </div>
 
-        {/* 🚀 FREE DELIVERY BANNER (যেকোনো অর্ডারে ১০০% ফ্রি) */}
+        {/* 🚀 FREE DELIVERY BANNER */}
         <div className="mb-8 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
@@ -143,6 +238,11 @@ function Cart() {
                     const itemTotal =
                       Number(item.sellingPrice || 0) *
                       Number(item.quantity || 0);
+                    const maxStock = getAvailableStock(item);
+                    const isAtMaxStock =
+                      maxStock !== null && Number(item.quantity) >= maxStock;
+                    const isOverStock =
+                      maxStock !== null && Number(item.quantity) > maxStock;
 
                     return (
                       <tr
@@ -173,10 +273,21 @@ function Cart() {
                               <p className="mt-0.5 text-[11px] text-slate-400">
                                 {item.company || "Certified Generic"}
                               </p>
-                              <span className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
-                                <FaRegCheckCircle className="text-[8px]" /> In
-                                Stock
-                              </span>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                                  <FaRegCheckCircle className="text-[8px]" />
+                                  {maxStock !== null
+                                    ? `Stock: ${maxStock}`
+                                    : "In Stock"}
+                                </span>
+
+                                {isAtMaxStock && (
+                                  <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                                    <FaExclamationTriangle className="text-[8px]" />
+                                    Max Stock Reached
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -190,13 +301,13 @@ function Cart() {
 
                         {/* QUANTITY CONTROL */}
                         <td className="px-6 py-4">
-                          <div className="flex items-center justify-center">
+                          <div className="flex flex-col items-center justify-center gap-1">
                             <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 p-1 shadow-2xs">
                               <button
                                 type="button"
                                 onClick={() => decreaseQuantity(item._id)}
                                 disabled={item.quantity <= 1}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600 shadow-2xs transition hover:bg-slate-200 disabled:opacity-40"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600 shadow-2xs transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <FaMinus size={9} />
                               </button>
@@ -205,12 +316,24 @@ function Cart() {
                               </span>
                               <button
                                 type="button"
-                                onClick={() => increaseQuantity(item._id)}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600 shadow-2xs transition hover:bg-slate-200"
+                                onClick={() => handleIncreaseQuantity(item)}
+                                disabled={isAtMaxStock}
+                                title={
+                                  isAtMaxStock
+                                    ? `Maximum available stock is ${maxStock}`
+                                    : "Increase quantity"
+                                }
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600 shadow-2xs transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <FaPlus size={9} />
                               </button>
                             </div>
+
+                            {isOverStock && (
+                              <span className="text-[10px] font-bold text-red-600">
+                                স্টকে আছে {maxStock} টি!
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -244,6 +367,11 @@ function Cart() {
               {cart.map((item) => {
                 const itemTotal =
                   Number(item.sellingPrice || 0) * Number(item.quantity || 0);
+                const maxStock = getAvailableStock(item);
+                const isAtMaxStock =
+                  maxStock !== null && Number(item.quantity) >= maxStock;
+                const isOverStock =
+                  maxStock !== null && Number(item.quantity) > maxStock;
 
                 return (
                   <div
@@ -278,32 +406,50 @@ function Cart() {
                         <p className="text-[10px] text-slate-400">
                           {item.company || "Medicine"}
                         </p>
-                        <p className="mt-1 text-xs font-black text-emerald-700">
-                          ৳ {Number(item.sellingPrice || 0).toFixed(2)}
-                        </p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className="text-xs font-black text-emerald-700">
+                            ৳ {Number(item.sellingPrice || 0).toFixed(2)}
+                          </p>
+                          {maxStock !== null && (
+                            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                              Stock: {maxStock}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
-                      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-                        <button
-                          type="button"
-                          onClick={() => decreaseQuantity(item._id)}
-                          disabled={item.quantity <= 1}
-                          className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-600 disabled:opacity-40"
-                        >
-                          <FaMinus size={8} />
-                        </button>
-                        <span className="min-w-[24px] text-center text-xs font-bold">
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => increaseQuantity(item._id)}
-                          className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-600"
-                        >
-                          <FaPlus size={8} />
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => decreaseQuantity(item._id)}
+                            disabled={item.quantity <= 1}
+                            className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <FaMinus size={8} />
+                          </button>
+                          <span className="min-w-[24px] text-center text-xs font-bold">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleIncreaseQuantity(item)}
+                            disabled={isAtMaxStock}
+                            className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <FaPlus size={8} />
+                          </button>
+                        </div>
+
+                        {isAtMaxStock && (
+                          <span className="text-[10px] font-bold text-amber-600">
+                            {isOverStock
+                              ? `স্টকে আছে ${maxStock} টি!`
+                              : "Max Stock"}
+                          </span>
+                        )}
                       </div>
 
                       <div className="text-right">
@@ -374,14 +520,22 @@ function Cart() {
                 </div>
               </div>
 
+              {hasOverStockItem && (
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-[11px] font-bold text-red-600">
+                  আপনার কার্টে স্টকের চেয়ে বেশি ওষুধ রয়েছে। অনুগ্রহ করে পরিমাণ
+                  কমিয়ে চেকআউট করুন।
+                </div>
+              )}
+
               {/* CHECKOUT BUTTON */}
-              <Link
-                to="/checkout"
+              <button
+                type="button"
+                onClick={handleProceedCheckout}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-200 transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-95"
               >
                 <FaLock className="text-xs" />
                 <span>Proceed to Checkout</span>
-              </Link>
+              </button>
 
               {/* TRUST BADGES */}
               <div className="mt-6 border-t border-slate-100 pt-4">
