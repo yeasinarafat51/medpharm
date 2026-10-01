@@ -85,11 +85,17 @@ function Dashboard() {
   }, [user, navigate]);
 
   // =====================================================
-  // ADMIN ROLE GUARD: Admin শুধুমাত্র all-orders দেখবে
+  // ADMIN ROLE GUARD (FIXED):
+  // Admin এখন all-orders এবং invoice প্রিন্ট পেজে যেতে পারবে!
   // =====================================================
   useEffect(() => {
     if (!roleLoading && role === "admin") {
-      if (location.pathname !== "/dashboard/all-orders") {
+      const isAllowedForAdmin =
+        location.pathname === "/dashboard/all-orders" ||
+        location.pathname.startsWith("/dashboard/invoice") ||
+        location.pathname.startsWith("/dashboard/admin/invoice");
+
+      if (!isAllowedForAdmin) {
         navigate("/dashboard/all-orders", { replace: true });
       }
     }
@@ -452,8 +458,6 @@ function Dashboard() {
 
       {/* =====================================================
           MOBILE BOTTOM ADMIN BAR (ROLE-BASED)
-          - Admin: শুধুমাত্র All Orders, Store, Menu
-          - Super Admin: সব অপশন
       ===================================================== */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 px-2 py-1 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:hidden">
         {role === "super-admin" ? (

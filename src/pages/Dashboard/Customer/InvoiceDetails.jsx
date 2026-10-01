@@ -3,25 +3,56 @@ import { useParams, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import jsPDF from "jspdf";
 
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://medpharm-server-3.onrender.com";
+const API_URL = (
+  import.meta.env.VITE_API_URL || "https://medpharm-server-3.onrender.com"
+).trim();
+
+const ORDERS_CACHE_KEY = "novacare_orders_cache_v1";
 
 function InvoiceDetails() {
   const { id } = useParams();
   const location = useLocation();
 
-  // AllOrders থেকে পাঠানো সিঙ্গেল অথবা কম্বাইন্ড অর্ডার ডাটা
-  const passedOrder = location.state?.combinedOrder || null;
+  // ১. AllOrders থেকে পাঠানো ডাটা অথবা রিলোড দিলে sessionStorage থেকে রিকভার করা
+  const [order, setOrder] = useState(() => {
+    if (location.state?.combinedOrder) {
+      return location.state.combinedOrder;
+    }
+    if (id) {
+      try {
+        const savedSession = sessionStorage.getItem(`novacare_invoice_${id}`);
+        if (savedSession) return JSON.parse(savedSession);
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  });
 
-  const [order, setOrder] = useState(passedOrder);
-  const [loading, setLoading] = useState(!passedOrder);
+  const [loading, setLoading] = useState(() => !order);
 
   // ============================================
-  // LOAD INVOICE
+  // SAVE PASSED ORDER TO SESSION & LOAD IF NEEDED
   // ============================================
   useEffect(() => {
-    if (passedOrder) {
-      setOrder(passedOrder);
+    if (location.state?.combinedOrder) {
+      const passed = location.state.combinedOrder;
+      setOrder(passed);
+      setLoading(false);
+      if (id) {
+        try {
+          sessionStorage.setItem(
+            `novacare_invoice_${id}`,
+            JSON.stringify(passed),
+          );
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
+
+    if (order) {
       setLoading(false);
       return;
     }
@@ -32,7 +63,7 @@ function InvoiceDetails() {
     }
 
     loadOrder();
-  }, [id, passedOrder]);
+  }, [id, location.state]);
 
   const loadOrder = async () => {
     try {
@@ -44,10 +75,34 @@ function InvoiceDetails() {
       } else if (res.data?.order) {
         setOrder(res.data.order);
       } else {
+        // ক্যাশ থেকে ফলব্যাক চেক
+        const cached = localStorage.getItem(ORDERS_CACHE_KEY);
+        if (cached) {
+          const list = JSON.parse(cached);
+          const found = list.find((o) => String(o._id) === String(id));
+          if (found) {
+            setOrder(found);
+            return;
+          }
+        }
         setOrder(null);
       }
     } catch (error) {
       console.error("Invoice Load Error:", error);
+      // অফলাইন বা এরর হলে লোকাল ক্যাশ থেকে খোঁজা
+      try {
+        const cached = localStorage.getItem(ORDERS_CACHE_KEY);
+        if (cached) {
+          const list = JSON.parse(cached);
+          const found = list.find((o) => String(o._id) === String(id));
+          if (found) {
+            setOrder(found);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
       setOrder(null);
     } finally {
       setLoading(false);
@@ -62,31 +117,23 @@ function InvoiceDetails() {
   };
 
   // ============================================
-  // DOWNLOAD PDF (CRISP PURE BLACK FOR THERMAL)
+  // DOWNLOAD PDF (2-PASS EXACT HEIGHT + CRISP PURE BLACK)
   // ============================================
   const downloadPDF = () => {
     if (!order) return;
 
     try {
       const items = order.items || [];
-      const estimatedHeight = Math.max(185, 110 + items.length * 15);
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [80, estimatedHeight],
-      });
-
       const pageWidth = 80;
       const margin = 4;
       const contentWidth = pageWidth - margin * 2;
 
-      let y = 8;
-
       const invoiceNumber =
         order.invoiceNo ||
         order.orderNo ||
-        `INV-${String(order._id || "").slice(-6)}`;
+        `INV-${String(order._id || "")
+          .slice(-6)
+          .toUpperCase()}`;
 
       const orderDate = order.orderDate
         ? new Date(order.orderDate)
@@ -97,6 +144,11 @@ function InvoiceDetails() {
       const customerAddress = order.address || "N/A";
       const paymentMethod =
         order.paymentMethod || order.paymentStatus || "Cash on Delivery";
+
+      const totalUnits = items.reduce(
+        (sum, it) => sum + Number(it.quantity || 0),
+        0,
+      );
 
       const subtotal = items.reduce((sum, item) => {
         const unitPrice =
@@ -117,179 +169,221 @@ function InvoiceDetails() {
         (order.paymentStatus === "Paid" ? grandTotal : 0);
       const dueAmount = Math.max(grandTotal - totalPaid, 0);
 
-      // সব লেখা ১০০% পিওর ব্ল্যাক (#000000) এবং বোল্ড করা হয়েছে
-      pdf.setTextColor(0, 0, 0);
-      pdf.setDrawColor(0, 0, 0);
+      // রিসিপ্ট ড্র করার ফাংশন (Pass 1 এ উচ্চতা মাপে, Pass 2 তে আসল PDF আঁকে)
+      const renderReceipt = (pdf) => {
+        let y = 7.5;
 
-      // HEADER
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
-      pdf.text("NOVACARE", pageWidth / 2, y, { align: "center" });
+        pdf.setTextColor(0, 0, 0);
+        pdf.setDrawColor(0, 0, 0);
 
-      y += 5;
-      pdf.setFontSize(8);
-      pdf.text("Pharmacy Management System", pageWidth / 2, y, {
-        align: "center",
-      });
+        // HEADER
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(15.5);
+        pdf.text("NOVACARE", pageWidth / 2, y, { align: "center" });
 
-      y += 4;
-      pdf.text("WhatsApp: 01620316751", pageWidth / 2, y, { align: "center" });
+        y += 4.8;
+        pdf.setFontSize(8);
+        pdf.text("Pharmacy Management System", pageWidth / 2, y, {
+          align: "center",
+        });
 
-      y += 4;
-      pdf.setLineWidth(0.4);
-      pdf.line(margin, y, pageWidth - margin, y);
+        y += 3.8;
+        pdf.text("WhatsApp: 01620316751", pageWidth / 2, y, {
+          align: "center",
+        });
 
-      y += 5;
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text("RETAIL INVOICE", pageWidth / 2, y, { align: "center" });
+        y += 3.6;
+        pdf.setLineWidth(0.4);
+        pdf.line(margin, y, pageWidth - margin, y);
 
-      if (order.orderCount && order.orderCount > 1) {
-        y += 4;
-        pdf.setFontSize(7.5);
+        y += 4.6;
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10.5);
+        pdf.text("RETAIL INVOICE", pageWidth / 2, y, { align: "center" });
+
+        if (order.orderCount && order.orderCount > 1) {
+          y += 3.8;
+          pdf.setFontSize(7.5);
+          pdf.text(
+            `[COMBINED: ${order.orderCount} ORDERS IN 1 INVOICE]`,
+            pageWidth / 2,
+            y,
+            { align: "center" },
+          );
+        }
+
+        y += 4.6;
+        pdf.setFontSize(7.8);
+        pdf.text(`ORDER: ${invoiceNumber}`, margin, y);
+
+        y += 3.8;
         pdf.text(
-          `[COMBINED: ${order.orderCount} ORDERS IN 1 INVOICE]`,
-          pageWidth / 2,
+          `DATE: ${orderDate.toLocaleDateString()}   TIME: ${orderDate.toLocaleTimeString(
+            [],
+            { hour: "2-digit", minute: "2-digit" },
+          )}`,
+          margin,
           y,
-          { align: "center" },
         );
-      }
 
-      y += 5;
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`ORDER: ${invoiceNumber}`, margin, y);
+        y += 4;
+        const customerText = pdf.splitTextToSize(
+          `CUSTOMER: ${customerName}`,
+          contentWidth,
+        );
+        pdf.text(customerText, margin, y);
+        y += 3.6 * customerText.length;
 
-      y += 4;
-      pdf.text(
-        `DATE: ${orderDate.toLocaleDateString()}   TIME: ${orderDate.toLocaleTimeString(
-          [],
-          { hour: "2-digit", minute: "2-digit" },
-        )}`,
-        margin,
-        y,
-      );
+        pdf.text(`PHONE: ${customerPhone}`, margin, y);
+        y += 3.8;
 
-      y += 4.5;
-      const customerText = pdf.splitTextToSize(
-        `CUSTOMER: ${customerName}`,
-        contentWidth,
-      );
-      pdf.text(customerText, margin, y);
-      y += 4 * customerText.length;
+        const addressText = pdf.splitTextToSize(
+          `ADDRESS: ${customerAddress}`,
+          contentWidth,
+        );
+        pdf.text(addressText, margin, y);
+        y += 3.6 * addressText.length;
 
-      pdf.text(`PHONE: ${customerPhone}`, margin, y);
-      y += 4;
+        if (order.note || (order.notes && order.notes.length > 0)) {
+          const noteStr = order.notes?.length
+            ? order.notes.join(" | ")
+            : order.note;
+          const noteLines = pdf.splitTextToSize(
+            `NOTE: ${noteStr}`,
+            contentWidth,
+          );
+          pdf.text(noteLines, margin, y);
+          y += 3.5 * noteLines.length;
+        }
 
-      const addressText = pdf.splitTextToSize(
-        `ADDRESS: ${customerAddress}`,
-        contentWidth,
-      );
-      pdf.text(addressText, margin, y);
-      y += 4 * addressText.length;
+        y += 1.5;
+        pdf.setLineWidth(0.4);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 4;
 
-      y += 2;
-      pdf.setLineWidth(0.4);
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 4.5;
+        // TABLE HEADER (Non-overlapping columns)
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(7.5);
+        pdf.text("SL", margin, y);
+        pdf.text("ITEM", margin + 5.5, y);
+        pdf.text("RATE", 50, y, { align: "right" });
+        pdf.text("QTY", 59, y, { align: "right" });
+        pdf.text("TOTAL", 76, y, { align: "right" });
 
-      // TABLE HEADER
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.text("SL", margin, y);
-      pdf.text("ITEM", margin + 6, y);
-      pdf.text("RATE", 51, y, { align: "right" });
-      pdf.text("QTY", 61, y, { align: "right" });
-      pdf.text("TOTAL", 76, y, { align: "right" });
+        y += 2;
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 3.8;
 
-      y += 2.5;
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 4;
+        // MEDICINES ROWS
+        items.forEach((item, index) => {
+          const unitPrice =
+            Number(item.unitPrice) ||
+            Number(item.sellingPrice) ||
+            Number(item.price) ||
+            0;
+          const quantity = Number(item.quantity) || 0;
+          const totalPrice = Number(item.totalPrice) || unitPrice * quantity;
+          const medicineName = String(
+            item.medicineName || item.name || "Medicine",
+          ).toUpperCase();
 
-      // MEDICINES ROWS
-      items.forEach((item, index) => {
-        const unitPrice =
-          Number(item.unitPrice) ||
-          Number(item.sellingPrice) ||
-          Number(item.price) ||
-          0;
-        const quantity = Number(item.quantity) || 0;
-        const totalPrice = Number(item.totalPrice) || unitPrice * quantity;
-        const medicineName = String(
-          item.medicineName || item.name || "Medicine",
-        ).toUpperCase();
+          // Max width 30mm so ITEM text never touches RATE column
+          const itemLines = pdf.splitTextToSize(medicineName, 30);
 
-        const itemLines = pdf.splitTextToSize(medicineName, 34);
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(7.6);
+          pdf.text(`${index + 1}.`, margin, y);
+          pdf.text(itemLines, margin + 5.5, y);
+          pdf.text(unitPrice.toFixed(2), 50, y, { align: "right" });
+          pdf.text(String(quantity), 59, y, { align: "right" });
+          pdf.text(totalPrice.toFixed(2), 76, y, { align: "right" });
 
+          y += itemLines.length * 3.4;
+
+          if (item.company) {
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(6.5);
+            const companyLines = pdf.splitTextToSize(String(item.company), 30);
+            pdf.text(companyLines, margin + 5.5, y);
+            y += companyLines.length * 3;
+          }
+
+          y += 1.4;
+        });
+
+        pdf.setLineWidth(0.4);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 4;
+
+        // TOTALS
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(8);
-        pdf.text(String(index + 1), margin, y);
-        pdf.text(itemLines, margin + 6, y);
-        pdf.text(unitPrice.toFixed(2), 51, y, { align: "right" });
-        pdf.text(String(quantity), 61, y, { align: "right" });
-        pdf.text(totalPrice.toFixed(2), 76, y, { align: "right" });
+        pdf.text(`Total Items: ${items.length} (${totalUnits} pcs)`, margin, y);
+        y += 4;
 
-        y += Math.max(4.2, itemLines.length * 3.6);
+        pdf.setFontSize(8.2);
+        pdf.text("Subtotal:", 42, y);
+        pdf.text(`TK ${subtotal.toFixed(2)}`, 76, y, { align: "right" });
 
-        if (item.company) {
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(6.8);
-          pdf.text(String(item.company), margin + 6, y);
-          y += 3.5;
+        if (discount > 0) {
+          y += 4;
+          pdf.text("Discount:", 42, y);
+          pdf.text(`- TK ${discount.toFixed(2)}`, 76, y, { align: "right" });
         }
-        y += 1.2;
-      });
 
-      pdf.setLineWidth(0.4);
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 4.5;
+        y += 4.8;
+        pdf.setFontSize(10);
+        pdf.text("NET AMOUNT:", 34, y);
+        pdf.text(`TK ${grandTotal.toFixed(2)}`, 76, y, { align: "right" });
 
-      // TOTALS
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8.5);
-      pdf.text("Subtotal:", 44, y);
-      pdf.text(`TK ${subtotal.toFixed(2)}`, 76, y, { align: "right" });
-
-      if (discount > 0) {
         y += 4.2;
-        pdf.text("Discount:", 44, y);
-        pdf.text(`- TK ${discount.toFixed(2)}`, 76, y, { align: "right" });
-      }
+        pdf.setFontSize(8.2);
+        pdf.text("Total Paid:", 42, y);
+        pdf.text(`TK ${totalPaid.toFixed(2)}`, 76, y, { align: "right" });
 
-      y += 5;
-      pdf.setFontSize(10.5);
-      pdf.text("NET AMOUNT:", 36, y);
-      pdf.text(`TK ${grandTotal.toFixed(2)}`, 76, y, { align: "right" });
+        y += 4;
+        pdf.text("Due Amount:", 42, y);
+        pdf.text(`TK ${dueAmount.toFixed(2)}`, 76, y, { align: "right" });
 
-      y += 4.5;
-      pdf.setFontSize(8.5);
-      pdf.text("Total Paid:", 44, y);
-      pdf.text(`TK ${totalPaid.toFixed(2)}`, 76, y, { align: "right" });
+        y += 3.8;
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 4.2;
 
-      y += 4.2;
-      pdf.text("Due Amount:", 44, y);
-      pdf.text(`TK ${dueAmount.toFixed(2)}`, 76, y, { align: "right" });
+        pdf.setFontSize(8.2);
+        pdf.text(`Paid By: ${paymentMethod}`, pageWidth / 2, y, {
+          align: "center",
+        });
 
-      y += 4;
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 4.5;
+        y += 5;
+        pdf.setFontSize(8.2);
+        pdf.text("Thank you for choosing NovaCare!", pageWidth / 2, y, {
+          align: "center",
+        });
 
-      pdf.setFontSize(8.5);
-      pdf.text(`Paid By: ${paymentMethod}`, pageWidth / 2, y, {
-        align: "center",
+        y += 3.6;
+        pdf.setFontSize(6.8);
+        pdf.text("Powered and Managed by NovaCare", pageWidth / 2, y, {
+          align: "center",
+        });
+
+        return y + 6;
+      };
+
+      // Pass 1: Measure exact required height
+      const measureDoc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [80, 500],
       });
+      const exactHeight = Math.max(145, Math.ceil(renderReceipt(measureDoc)));
 
-      y += 5.5;
-      pdf.setFontSize(8.5);
-      pdf.text("Thank you for choosing NovaCare!", pageWidth / 2, y, {
-        align: "center",
+      // Pass 2: Render final PDF with exact height
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [80, exactHeight],
       });
-
-      y += 4;
-      pdf.setFontSize(7);
-      pdf.text("Powered and Managed by NovaCare", pageWidth / 2, y, {
-        align: "center",
-      });
+      renderReceipt(pdf);
 
       pdf.save(`Invoice-${invoiceNumber}.pdf`);
     } catch (error) {
@@ -336,9 +430,16 @@ function InvoiceDetails() {
   const invoiceNumber =
     order.invoiceNo ||
     order.orderNo ||
-    `INV-${String(order._id || "").slice(-6)}`;
+    `INV-${String(order._id || "")
+      .slice(-6)
+      .toUpperCase()}`;
 
   const orderDate = order.orderDate ? new Date(order.orderDate) : new Date();
+
+  const totalUnits = items.reduce(
+    (sum, it) => sum + Number(it.quantity || 0),
+    0,
+  );
 
   const subtotal = items.reduce((sum, item) => {
     const unitPrice =
@@ -364,6 +465,31 @@ function InvoiceDetails() {
   return (
     <>
       <div className="invoice-page min-h-screen bg-slate-200 px-3 py-6">
+        {/* TOP NAVIGATION & PRINT ACTIONS (HIDDEN IN PRINT) */}
+        <div className="print-hidden mx-auto mb-3 flex max-w-[380px] items-center justify-between gap-2">
+          <Link
+            to="/dashboard/all-orders"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-black text-slate-800 shadow-xs hover:bg-slate-100"
+          >
+            ← Back to Orders
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800"
+            >
+              🖨️ Print
+            </button>
+            <button
+              onClick={downloadPDF}
+              className="rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700"
+            >
+              📄 PDF
+            </button>
+          </div>
+        </div>
+
         {/* COMBINED BADGE ON SCREEN */}
         {isCombined && (
           <div className="print-hidden mx-auto mb-3 max-w-[380px] rounded-xl bg-purple-700 p-3 text-center text-xs font-bold text-white shadow-md">
@@ -410,7 +536,7 @@ function InvoiceDetails() {
             )}
           </div>
 
-          {/* ORDER & CUSTOMER INFO (সব লেখা গাঢ় কালো ও স্পষ্ট) */}
+          {/* ORDER & CUSTOMER INFO */}
           <div className="mt-3 space-y-1 text-xs font-bold text-black">
             <div className="flex justify-between">
               <span>ORDER: {invoiceNumber}</span>
@@ -435,13 +561,19 @@ function InvoiceDetails() {
                 <span className="font-black">ADDRESS:</span>{" "}
                 {order.address || "N/A"}
               </p>
+              {(order.note || (order.notes && order.notes.length > 0)) && (
+                <p className="break-words mt-0.5 leading-snug">
+                  <span className="font-black">NOTE:</span>{" "}
+                  {order.notes?.length ? order.notes.join(" | ") : order.note}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="my-2.5 border-t-2 border-dashed border-black" />
 
           {/* TABLE HEADER */}
-          <div className="grid grid-cols-[20px_1fr_46px_28px_54px] gap-1 text-[11px] font-black uppercase text-black">
+          <div className="grid grid-cols-[22px_1fr_46px_28px_56px] gap-1 text-[11px] font-black uppercase text-black">
             <div>SL</div>
             <div>ITEM</div>
             <div className="text-right">RATE</div>
@@ -451,7 +583,7 @@ function InvoiceDetails() {
 
           <div className="my-1.5 border-t-2 border-dashed border-black" />
 
-          {/* MEDICINES LIST (হাই-কনট্রাস্ট গাঢ় কালো টেক্সট) */}
+          {/* MEDICINES LIST */}
           <div className="divide-y divide-dotted divide-black">
             {items.map((item, index) => {
               const unitPrice =
@@ -465,8 +597,8 @@ function InvoiceDetails() {
 
               return (
                 <div
-                  key={item._id || index}
-                  className="grid grid-cols-[20px_1fr_46px_28px_54px] gap-1 py-1.5 text-xs font-bold text-black items-start"
+                  key={item._id || item.medicineId || index}
+                  className="grid grid-cols-[22px_1fr_46px_28px_56px] gap-1 py-1.5 text-xs font-bold text-black items-start"
                 >
                   <div className="font-black">{index + 1}.</div>
 
@@ -497,6 +629,13 @@ function InvoiceDetails() {
 
           {/* TOTAL AMOUNTS */}
           <div className="mt-2 space-y-1 text-xs font-bold text-black">
+            <div className="flex justify-between">
+              <span>Total Items:</span>
+              <span>
+                {items.length} items ({totalUnits} pcs)
+              </span>
+            </div>
+
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span>TK {subtotal.toFixed(2)}</span>
@@ -545,7 +684,7 @@ function InvoiceDetails() {
           </div>
         </div>
 
-        {/* PRINT & DOWNLOAD BUTTONS */}
+        {/* BOTTOM PRINT & DOWNLOAD BUTTONS */}
         <div className="print-hidden mx-auto mt-5 flex max-w-[380px] gap-3">
           <button
             onClick={handlePrint}
@@ -564,7 +703,7 @@ function InvoiceDetails() {
       </div>
 
       {/* =====================================================
-          ULTRA-CRISP THERMAL PRINT CSS (NO FADED TEXT)
+          ULTRA-CRISP THERMAL PRINT CSS (MULTI-ITEM SAFE, NO CUTOFF)
       ===================================================== */}
       <style>{`
         @media print {
@@ -585,49 +724,43 @@ function InvoiceDetails() {
             print-color-adjust: exact !important;
           }
 
-          html, body {
+          /* Dashboard এর স্ক্রল কন্টেইনার যাতে লম্বা মেমো কেটে না দেয় */
+          html,
+          body,
+          #root,
+          main,
+          .invoice-page {
             width: 80mm !important;
             max-width: 80mm !important;
+            min-height: 0 !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
+            overflow: visible !important;
+            display: block !important;
             background: #ffffff !important;
           }
 
-          body * {
-            visibility: hidden !important;
-          }
-
-          #invoice, #invoice * {
-            visibility: visible !important;
-          }
-
+          aside,
+          header,
+          nav,
           .print-hidden {
             display: none !important;
             visibility: hidden !important;
           }
 
-          .invoice-page {
-            min-height: 0 !important;
-            height: auto !important;
-            width: 80mm !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: #ffffff !important;
-          }
-
           #invoice {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 74mm !important; /* 80mm রোল পেপারের ভেতরে সেফ জোন যাতে ডান-বাম পাশের অক্ষর না কাটে */
+            position: static !important;
+            width: 74mm !important;
             max-width: 74mm !important;
             margin: 0 auto !important;
-            padding: 2mm 3mm !important;
+            padding: 2mm 2.5mm !important;
             background: #ffffff !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
             overflow: visible !important;
+            page-break-inside: auto !important;
             font-family: "Courier New", Courier, Arial, sans-serif !important;
             font-size: 11px !important;
             font-weight: 700 !important;
