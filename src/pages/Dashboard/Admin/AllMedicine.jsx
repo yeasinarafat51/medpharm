@@ -8,7 +8,9 @@ const API = "https://medpharm-server-3.onrender.com";
 const companies = [
   { name: "All Medicines", value: "" },
   { name: "Square", value: "Square" },
+  { name: "Unimed Unihealth", value: "Unimed Unihealth" },
   { name: "Aci", value: "Aci" },
+  { name: "Opsonin", value: "Opsonin" },
   { name: "Popular", value: "Popular" },
   { name: "Ibn-Sina", value: "Ibnsina" },
   { name: "SKF", value: "SKF" },
@@ -68,7 +70,7 @@ const AllMedicine = () => {
         axios.get(`${API}/api/medicines?limit=1`).catch(() => {});
       },
       4 * 60 * 1000,
-    ); // প্রতি ৪ মিনিট পর পর পিং করবে
+    );
 
     return () => clearInterval(keepAlive);
   }, []);
@@ -89,9 +91,8 @@ const AllMedicine = () => {
   // ৩. সুপার-ফাস্ট ডাটা লোড (Instant Cache + Background Fetch)
   // =========================================================
   const loadMedicine = async (forceRefresh = false) => {
-    const cacheKey = `meds_v1_${debouncedSearch.trim()}_${company.trim()}_${page}_${sort}_${limit}`;
+    const cacheKey = `meds_v2_${debouncedSearch.trim()}_${company.trim()}_${page}_${sort}_${limit}`;
 
-    // আগের কোনো পেন্ডিং রিকুয়েস্ট থাকলে ক্যানসেল করে নতুনটা চালাবে
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -104,7 +105,7 @@ const AllMedicine = () => {
       setMedicines(cached.medicines || []);
       setTotalPages(cached.totalPages || 1);
       setLoading(false);
-      setIsSyncing(true); // ব্যাকগ্রাউন্ডে আপডেট হচ্ছে
+      setIsSyncing(true);
     } else {
       setLoading(true);
     }
@@ -145,7 +146,7 @@ const AllMedicine = () => {
             limit: String(limit),
             sort,
           });
-          const nextKey = `meds_v1_${debouncedSearch.trim()}_${company.trim()}_${
+          const nextKey = `meds_v2_${debouncedSearch.trim()}_${company.trim()}_${
             page + 1
           }_${sort}_${limit}`;
 
@@ -208,7 +209,6 @@ const AllMedicine = () => {
 
     if (!result.isConfirmed) return;
 
-    // সাথে সাথে স্ক্রিন থেকে সরিয়ে দেওয়া (যাতে ইউজারকে অপেক্ষা করতে না হয়)
     const previousMedicines = [...medicines];
     setMedicines((prev) => prev.filter((item) => item._id !== id));
 
@@ -272,13 +272,13 @@ const AllMedicine = () => {
             )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Instant cached loading & real-time search without page reload.
+            Exact MRP, Bikri Discount (%) & Selling Price overview.
           </p>
         </div>
 
         <Link
           to="/dashboard/add-medicine"
-          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition"
+          className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition"
         >
           <span>+ Add Medicine</span>
         </Link>
@@ -292,12 +292,12 @@ const AllMedicine = () => {
         <div className="flex flex-wrap gap-2">
           {companies.map((companyItem) => (
             <button
-              key={companyItem.value}
+              key={companyItem.value || "all"}
               type="button"
               onClick={() => handleCompanyChange(companyItem.value)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 company === companyItem.value
-                  ? "bg-blue-600 text-white shadow-xs"
+                  ? "bg-emerald-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -319,7 +319,7 @@ const AllMedicine = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Type medicine, company, or generic name to search instantly..."
-              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition"
             />
             <span className="absolute left-3.5 top-3 text-slate-400 text-xs">
               🔍
@@ -342,7 +342,7 @@ const AllMedicine = () => {
                 setSort(e.target.value);
                 setPage(1);
               }}
-              className="w-full md:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-blue-500 focus:bg-white"
+              className="w-full md:w-auto px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white"
             >
               <option value="asc">A → Z</option>
               <option value="desc">Z → A</option>
@@ -353,15 +353,15 @@ const AllMedicine = () => {
 
       {/* SELECTED COMPANY BADGE */}
       {company && (
-        <div className="mb-4 flex items-center gap-2 text-xs text-slate-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl w-fit">
+        <div className="mb-4 flex items-center gap-2 text-xs text-slate-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl w-fit">
           <span>Showing medicines from:</span>
-          <b className="text-blue-700 font-bold">
+          <b className="text-emerald-700 font-bold">
             {companies.find((item) => item.value === company)?.name || company}
           </b>
           <button
             type="button"
             onClick={() => setCompany("")}
-            className="ml-1 text-blue-800 hover:text-red-600 font-black"
+            className="ml-1 text-emerald-800 hover:text-red-600 font-black"
           >
             ✕
           </button>
@@ -379,10 +379,14 @@ const AllMedicine = () => {
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-right">Purchase (৳)</th>
-                <th className="px-4 py-3 text-right">MRP (৳)</th>
-                <th className="px-4 py-3 text-center">Discount</th>
-                <th className="px-4 py-3 text-right font-black text-slate-800">
-                  Selling (৳)
+                <th className="px-4 py-3 text-right font-bold text-slate-700">
+                  MRP (৳)
+                </th>
+                <th className="px-4 py-3 text-center font-bold text-rose-600">
+                  Bikri Discount (%)
+                </th>
+                <th className="px-4 py-3 text-right font-black text-emerald-700">
+                  Selling Price (৳)
                 </th>
                 <th className="px-4 py-3 text-center">Stock</th>
                 <th className="px-4 py-3 text-center">Actions</th>
@@ -394,7 +398,7 @@ const AllMedicine = () => {
                 <tr>
                   <td colSpan="10" className="text-center py-12">
                     <div className="flex flex-col justify-center items-center gap-2">
-                      <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-xs font-bold text-slate-400">
                         Loading medicines...
                       </span>
@@ -417,11 +421,52 @@ const AllMedicine = () => {
               ) : (
                 medicines.map((medicine, index) => {
                   const purchasePrice = Number(medicine.purchasePrice || 0);
-                  const mrpPrice = Number(
-                    medicine.mrp || medicine.sellingPrice || 0,
+
+                  // ১. আসল MRP (mrpePrice ফিল্ড থেকে নেওয়া হচ্ছে)
+                  const rawMrp = Number(
+                    medicine.mrpePrice ?? medicine.mrp ?? 0,
                   );
-                  const discountVal = Number(medicine.discount || 0);
-                  const sellingPrice = Number(medicine.sellingPrice || 0);
+                  const rawSelling = Number(medicine.sellingPrice || 0);
+                  const rawBikriPercent = Number(
+                    medicine.bikriPercent ?? medicine.discount ?? 0,
+                  );
+
+                  // ২. MRP যদি সেভ করা থাকে সেটাই দেখাবে, না থাকলে sellingPrice ও bikriPercent থেকে বের করবে
+                  const mrpPrice =
+                    rawMrp > 0
+                      ? rawMrp
+                      : rawBikriPercent > 0 && rawSelling > 0
+                        ? Number(
+                            (rawSelling / (1 - rawBikriPercent / 100)).toFixed(
+                              2,
+                            ),
+                          )
+                        : rawSelling;
+
+                  // ৩. কত পার্সেন্ট ডিসকাউন্টে সেল করা হচ্ছে (bikriPercent)
+                  const discountVal =
+                    rawBikriPercent > 0
+                      ? Number(rawBikriPercent.toFixed(2))
+                      : mrpPrice > rawSelling && mrpPrice > 0
+                        ? Number(
+                            (
+                              ((mrpPrice - rawSelling) / mrpPrice) *
+                              100
+                            ).toFixed(2),
+                          )
+                        : 0;
+
+                  // ৪. ফাইনাল Selling Price
+                  const sellingPrice =
+                    rawSelling > 0
+                      ? rawSelling
+                      : mrpPrice > 0 && discountVal > 0
+                        ? Number(
+                            (mrpPrice - (mrpPrice * discountVal) / 100).toFixed(
+                              2,
+                            ),
+                          )
+                        : mrpPrice;
 
                   return (
                     <tr
@@ -472,20 +517,29 @@ const AllMedicine = () => {
                         ৳{purchasePrice.toFixed(2)}
                       </td>
 
+                      {/* MRP PRICE (আসল MRP দেখাবে) */}
                       <td className="px-4 py-3.5 text-right font-bold text-slate-700">
-                        ৳{mrpPrice.toFixed(2)}
+                        {mrpPrice > sellingPrice ? (
+                          <span className="line-through decoration-slate-400 text-slate-600">
+                            ৳{mrpPrice.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span>৳{mrpPrice.toFixed(2)}</span>
+                        )}
                       </td>
 
+                      {/* BIKRI PERCENTAGE (কত % ডিসকাউন্টে সেল হচ্ছে) */}
                       <td className="px-4 py-3.5 text-center">
                         {discountVal > 0 ? (
                           <span className="inline-flex items-center rounded-full bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[10px] font-black text-rose-600">
-                            {discountVal}%
+                            {discountVal}% OFF
                           </span>
                         ) : (
                           <span className="text-[11px] text-slate-400">0%</span>
                         )}
                       </td>
 
+                      {/* SELLING PRICE (কত টাকায় বিক্রি হচ্ছে) */}
                       <td className="px-4 py-3.5 text-right font-black text-emerald-700 text-sm">
                         ৳{sellingPrice.toFixed(2)}
                       </td>
@@ -552,7 +606,7 @@ const AllMedicine = () => {
                 Previous
               </button>
 
-              <span className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-black">
+              <span className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-black">
                 {page}
               </span>
 
