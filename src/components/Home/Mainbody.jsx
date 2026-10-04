@@ -8,7 +8,6 @@ import {
 } from "react-icons/fa";
 import HeroSlider from "./HeroSlider";
 import AllitemMedicine from "../../pages/Dashboard/Customer/AllItemMedicine";
-// import SpecialOffer from "../SpecialOffer";
 
 const APK_DOWNLOAD_URL =
   "https://web2apkpro.com/public_download.php?project_id=20811&token=6e0ada7cc4";
@@ -48,12 +47,22 @@ const Mainbody = () => {
       </div>
 
       {/* =====================================================
-          HERO SLIDER (MOBILE CARD STYLE)
+          BANGLA DATE & NOTICE BADGE (VALOBAZAR STYLE)
       ===================================================== */}
-      <div className="mx-auto max-w-7xl px-2.5 pt-2.5 sm:px-4 sm:pt-4">
-        <div className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200/80">
-          <HeroSlider />
+      {/* <div className="mx-auto max-w-7xl px-2.5 pt-2 sm:px-4">
+        <div className="flex items-center gap-2 rounded-xl bg-amber-50/90 border border-amber-200/80 px-3.5 py-2 text-xs text-amber-900 shadow-2xs">
+          <span className="text-sm">🛒</span>
+          <p className="font-bold text-[11px] sm:text-xs">
+            আজকের অফার • সারা বাংলাদেশে ফ্রি হোম ডেলিভারি ও ১০০% অরিজিনাল ওষুধ
+          </p>
         </div>
+      </div> */}
+
+      {/* =====================================================
+          HERO SLIDER (CURVED CARD CAROUSEL LIKE VALOBAZAR)
+      ===================================================== */}
+      <div className="mx-auto max-w-7xl px-2.5 pt-2 sm:px-4">
+        <HeroSlider />
       </div>
 
       {/* =====================================================
@@ -107,8 +116,6 @@ const Mainbody = () => {
           </Link>
         </div>
       </div>
-
-      {/* <SpecialOffer /> */}
 
       {/* =====================================================
           ALL MEDICINES CATALOG SECTION

@@ -1,45 +1,63 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import {
-  FaArrowLeft,
-  FaArrowRight,
-  FaShoppingBag,
-  FaImages,
-} from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-const API_URL = " https://medpharm-server-3.onrender.com";
+const API_URL = (
+  import.meta.env.VITE_API_URL || "https://medpharm-server-3.onrender.com"
+).trim();
+
+// উচ্চমানের ডিফল্ট ব্যানার (যদি ডাটাবেস লোড হতে সময় নেয় বা খালি থাকে)
+const DEFAULT_SLIDERS = [
+  {
+    _id: "default-1",
+    title: "UniMed UniHealth — FLAT 16% OFF",
+    description:
+      "সব ধরনের ওষুধে বিশেষ ছাড় ও সারা বাংলাদেশে দ্রুত ফ্রি ডেলিভারি",
+    image: "https://iili.io/na9JoQ4.jpg",
+    buttonText: "Shop Now",
+    buttonLink: "/allproduct",
+  },
+  {
+    _id: "default-2",
+    title: "Square Pharmaceuticals — Genuine Supply",
+    description: "১০০% অরিজিনাল ও সঠিক তাপমাত্রায় সংরক্ষিত ওষুধ",
+    image: "https://i.ibb.co/L9Hw3YQ/square-banner.jpg",
+    buttonText: "Explore Now",
+    buttonLink: "/allproduct",
+  },
+];
 
 function HeroSlider() {
   const [sliders, setSliders] = useState([]);
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // মোবাইলে আঙুল দিয়ে সোয়াইপ করার সাপোর্ট (Touch Swipe)
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
 
   // =====================================================
-  // LOAD ACTIVE SLIDERS
+  // LOAD ACTIVE SLIDERS FROM API
   // =====================================================
-
   useEffect(() => {
     let mounted = true;
 
     const loadSliders = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/sliders/active`, {
-          timeout: 20000,
+          timeout: 12000,
         });
 
         if (!mounted) return;
 
-        const sliderData = Array.isArray(res.data?.sliders)
-          ? res.data.sliders
-          : [];
-
-        setSliders(sliderData);
+        const data = Array.isArray(res.data?.sliders) ? res.data.sliders : [];
+        setSliders(data.length > 0 ? data : DEFAULT_SLIDERS);
       } catch (error) {
         console.error("Slider Load Error:", error);
-
         if (mounted) {
-          setSliders([]);
+          setSliders(DEFAULT_SLIDERS);
         }
       } finally {
         if (mounted) {
@@ -55,385 +73,184 @@ function HeroSlider() {
     };
   }, []);
 
-  // =====================================================
-  // RESET CURRENT INDEX
-  // =====================================================
-
-  useEffect(() => {
-    if (sliders.length === 0) {
-      setCurrent(0);
-      return;
-    }
-
-    if (current >= sliders.length) {
-      setCurrent(0);
-    }
-  }, [sliders.length, current]);
-
-  // =====================================================
-  // AUTO SLIDE
-  // =====================================================
-
-  useEffect(() => {
-    if (sliders.length <= 1) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setCurrent((prev) => {
-        return (prev + 1) % sliders.length;
-      });
-    }, 5000);
-
-    return () => {
-      clearInterval(timer);
-    };
-  }, [sliders.length]);
-
-  // =====================================================
-  // NEXT SLIDE
-  // =====================================================
+  const activeSlides = sliders.length > 0 ? sliders : DEFAULT_SLIDERS;
+  const total = activeSlides.length;
 
   const nextSlide = () => {
-    if (sliders.length <= 1) {
-      return;
+    setCurrent((prev) => (prev + 1) % total);
+  };
+
+  const prevSlide = () => {
+    setCurrent((prev) => (prev - 1 + total) % total);
+  };
+
+  const goToSlide = (idx) => {
+    setCurrent(idx);
+  };
+
+  // অটো-স্লাইড (প্রতি ৪ সেকেন্ড পর পর) + হোভারে পজ
+  useEffect(() => {
+    if (isPaused || total <= 1) return;
+
+    const timer = setInterval(() => {
+      nextSlide();
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [current, isPaused, total]);
+
+  // মোবাইলে আঙুল দিয়ে সোয়াইপ হ্যান্ডলার
+  const handleTouchStart = (e) => {
+    setIsPaused(true);
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    setIsPaused(false);
+    if (!touchStartX.current || !touchEndX.current) return;
+
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 45) {
+      nextSlide(); // বামে সোয়াইপ -> পরের স্লাইড
+    } else if (distance < -45) {
+      prevSlide(); // ডানে সোয়াইপ -> আগের স্লাইড
     }
 
-    setCurrent((prev) => {
-      return (prev + 1) % sliders.length;
-    });
+    touchStartX.current = null;
+    touchEndX.current = null;
   };
-
-  // =====================================================
-  // PREVIOUS SLIDE
-  // =====================================================
-
-  const previousSlide = () => {
-    if (sliders.length <= 1) {
-      return;
-    }
-
-    setCurrent((prev) => {
-      return (prev - 1 + sliders.length) % sliders.length;
-    });
-  };
-
-  // =====================================================
-  // GO TO SLIDE
-  // =====================================================
-
-  const goToSlide = (index) => {
-    setCurrent(index);
-  };
-
-  // =====================================================
-  // IMAGE ERROR
-  // =====================================================
-
-  const handleImageError = (e) => {
-    e.currentTarget.style.display = "none";
-
-    const placeholder = e.currentTarget.nextElementSibling;
-
-    if (placeholder) {
-      placeholder.style.display = "flex";
-    }
-  };
-
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (loading) {
-    return (
-      <section className="w-full bg-gray-50 py-3 sm:py-5">
-        <div className="mx-auto max-w-7xl px-3 sm:px-5">
-          <div className="h-[230px] animate-pulse rounded-2xl bg-gray-200 sm:h-[340px] sm:rounded-3xl lg:h-[460px]" />
-        </div>
-      </section>
-    );
-  }
-
-  // =====================================================
-  // NO SLIDER
-  // =====================================================
-
-  if (sliders.length === 0) {
-    return null;
-  }
-
-  // =====================================================
-  // CURRENT SLIDER
-  // =====================================================
-
-  const slider = sliders[current] || {};
-
-  const image = typeof slider.image === "string" ? slider.image.trim() : "";
-
-  const title = typeof slider.title === "string" ? slider.title : "";
-
-  const description =
-    typeof slider.description === "string" ? slider.description : "";
-
-  const buttonText =
-    typeof slider.buttonText === "string" ? slider.buttonText : "";
-
-  const buttonLink =
-    typeof slider.buttonLink === "string" && slider.buttonLink.trim()
-      ? slider.buttonLink
-      : "/all-medicines";
 
   return (
-    <section className="w-full bg-gray-50 py-3 sm:py-5">
-      <div className="mx-auto max-w-7xl px-3 sm:px-5">
-        <div className="relative overflow-hidden rounded-2xl shadow-xl sm:rounded-3xl">
-          {/* =================================================
-              IMAGE
-          ================================================= */}
+    <div
+      className="relative w-full select-none"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* =====================================================
+          CURVED CARD BANNER (VALOBAZAR / E-COMMERCE STYLE)
+      ===================================================== */}
+      <div className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl shadow-sm ring-1 ring-slate-200/80 bg-slate-100 aspect-[2.1/1] sm:aspect-[16/7] md:aspect-[16/6]">
+        {/* SLIDING ANIMATION TRACK */}
+        <div
+          className="flex h-full w-full transition-transform duration-500 ease-out will-change-transform"
+          style={{ transform: `translateX(-${current * 100}%)` }}
+        >
+          {activeSlides.map((slide, idx) => {
+            const link = slide.buttonLink || "/allproduct";
+            const isExternal = link.startsWith("http");
 
-          {image ? (
-            <>
-              <img
-                src={image}
-                alt={title || "NovaCare Slider"}
-                onError={handleImageError}
-                className="
-                  h-[230px]
-                  w-full
-                  object-cover
-                  sm:h-[340px]
-                  lg:h-[460px]
-                "
-              />
+            const SlideContent = (
+              <div className="relative h-full w-full shrink-0 cursor-pointer overflow-hidden">
+                <img
+                  src={slide.image || "https://iili.io/na9JoQ4.jpg"}
+                  alt={slide.title || "Banner"}
+                  className="h-full w-full object-cover object-center transition-transform duration-700 hover:scale-102"
+                />
 
-              {/* IMAGE ERROR PLACEHOLDER */}
-
-              <div
-                className="
-                  hidden
-                  h-[230px]
-                  w-full
-                  items-center
-                  justify-center
-                  bg-gradient-to-br
-                  from-blue-600
-                  via-blue-500
-                  to-cyan-500
-                  sm:h-[340px]
-                  lg:h-[460px]
-                "
-              >
-                <div className="text-center text-white">
-                  <FaImages className="mx-auto text-5xl opacity-70 sm:text-7xl" />
-
-                  <p className="mt-3 text-sm font-semibold opacity-80 sm:text-base">
-                    NovaCare
-                  </p>
-                </div>
+                {/* অপশনাল ক্যাপশন টেক্সট (যদি টাইটেল থাকে) */}
+                {slide.title && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-3 sm:p-5 pt-8 text-white">
+                    <p className="line-clamp-1 text-xs font-black sm:text-base md:text-lg drop-shadow-sm">
+                      {slide.title}
+                    </p>
+                    {slide.description && (
+                      <p className="line-clamp-1 text-[10px] text-white/90 sm:text-xs drop-shadow-sm mt-0.5">
+                        {slide.description}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </>
-          ) : (
-            /* =================================================
-                NO IMAGE PLACEHOLDER
-            ================================================= */
+            );
 
-            <div
-              className="
-                flex
-                h-[230px]
-                w-full
-                items-center
-                justify-center
-                bg-gradient-to-br
-                from-blue-600
-                via-blue-500
-                to-cyan-500
-                sm:h-[340px]
-                lg:h-[460px]
-              "
-            >
-              <div className="text-center text-white">
-                <FaImages className="mx-auto text-5xl opacity-70 sm:text-7xl" />
-
-                <p className="mt-3 text-sm font-semibold opacity-80 sm:text-base"></p>
-              </div>
-            </div>
-          )}
-
-          {/* =================================================
-              DARK OVERLAY
-          ================================================= */}
-
-          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-black/10" />
-
-          {/* =================================================
-              CONTENT
-          ================================================= */}
-
-          <div className="absolute inset-0 flex items-center">
-            <div className="max-w-xl px-6 text-white sm:px-10 lg:px-16">
-              {/* BRAND */}
-
-              <p className="mb-2 text-xs font-bold uppercase tracking-[3px] text-blue-200 sm:text-sm"></p>
-
-              {/* TITLE */}
-
-              {title && (
-                <h1 className="text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                  {title}
-                </h1>
-              )}
-
-              {/* DESCRIPTION */}
-
-              {description && (
-                <p className="mt-3 max-w-lg text-xs leading-5 text-gray-200 sm:text-base sm:leading-7">
-                  {description}
-                </p>
-              )}
-
-              {/* BUTTON */}
-
-              {buttonText && (
-                <Link
-                  to={buttonLink}
-                  className="
-                    mt-5
-                    inline-flex
-                    items-center
-                    gap-2
-                    rounded-xl
-                    bg-blue-600
-                    px-4
-                    py-2.5
-                    text-xs
-                    font-bold
-                    text-white
-                    shadow-lg
-                    transition
-                    hover:scale-105
-                    hover:bg-blue-700
-                    sm:px-6
-                    sm:py-3
-                    sm:text-sm
-                  "
-                >
-                  <FaShoppingBag />
-
-                  {buttonText}
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* =================================================
-              NAVIGATION
-          ================================================= */}
-
-          {sliders.length > 1 && (
-            <>
-              {/* =================================================
-                  PREVIOUS BUTTON
-              ================================================= */}
-
-              <button
-                type="button"
-                onClick={previousSlide}
-                aria-label="Previous slide"
-                className="
-                  absolute
-                  left-3
-                  top-1/2
-                  flex
-                  h-9
-                  w-9
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-white/20
-                  text-white
-                  backdrop-blur-md
-                  transition
-                  hover:bg-white
-                  hover:text-blue-600
-                  sm:left-5
-                  sm:h-11
-                  sm:w-11
-                "
+            return isExternal ? (
+              <a
+                key={slide._id || idx}
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                className="h-full w-full shrink-0"
               >
-                <FaArrowLeft />
-              </button>
-
-              {/* =================================================
-                  NEXT BUTTON
-              ================================================= */}
-
-              <button
-                type="button"
-                onClick={nextSlide}
-                aria-label="Next slide"
-                className="
-                  absolute
-                  right-3
-                  top-1/2
-                  flex
-                  h-9
-                  w-9
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-white/20
-                  text-white
-                  backdrop-blur-md
-                  transition
-                  hover:bg-white
-                  hover:text-blue-600
-                  sm:right-5
-                  sm:h-11
-                  sm:w-11
-                "
+                {SlideContent}
+              </a>
+            ) : (
+              <Link
+                key={slide._id || idx}
+                to={link}
+                className="h-full w-full shrink-0"
               >
-                <FaArrowRight />
-              </button>
-
-              {/* =================================================
-                  DOTS
-              ================================================= */}
-
-              <div
-                className="
-                  absolute
-                  bottom-4
-                  left-1/2
-                  flex
-                  -translate-x-1/2
-                  items-center
-                  gap-2
-                "
-              >
-                {sliders.map((item, index) => (
-                  <button
-                    key={item._id || index}
-                    type="button"
-                    onClick={() => goToSlide(index)}
-                    aria-label={`Go to slide ${index + 1}`}
-                    className={`
-                      h-2
-                      rounded-full
-                      transition-all
-                      duration-300
-                      ${current === index ? "w-7 bg-white" : "w-2 bg-white/50"}
-                    `}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+                {SlideContent}
+              </Link>
+            );
+          })}
         </div>
+
+        {/* =====================================================
+            LEFT & RIGHT CHEVRONS (SLEEK GLASS CIRCLE BUTTONS)
+        ===================================================== */}
+        {total > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                prevSlide();
+              }}
+              aria-label="Previous Slide"
+              className="absolute left-2 sm:left-3.5 top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-black/30 hover:bg-black/55 text-white backdrop-blur-xs border border-white/20 shadow-md transition active:scale-90"
+            >
+              <FaChevronLeft className="text-xs sm:text-sm -ml-0.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                nextSlide();
+              }}
+              aria-label="Next Slide"
+              className="absolute right-2 sm:right-3.5 top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-black/30 hover:bg-black/55 text-white backdrop-blur-xs border border-white/20 shadow-md transition active:scale-90"
+            >
+              <FaChevronRight className="text-xs sm:text-sm -mr-0.5" />
+            </button>
+          </>
+        )}
+
+        {/* =====================================================
+            PAGINATION PILL DOTS (SLEEK EXPANDING PILL)
+        ===================================================== */}
+        {total > 1 && (
+          <div className="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1 backdrop-blur-xs border border-white/10">
+            {activeSlides.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  goToSlide(idx);
+                }}
+                aria-label={`Go to slide ${idx + 1}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  current === idx
+                    ? "w-6 bg-emerald-400 shadow-xs"
+                    : "w-1.5 bg-white/60 hover:bg-white"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 }
 
