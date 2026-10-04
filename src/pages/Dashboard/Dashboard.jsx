@@ -339,7 +339,14 @@ function Dashboard() {
                 <FaTags className="text-base" />
                 <span>Special Offers</span>
               </NavLink>
-
+              <NavLink
+                to="/dashboard/total-orders"
+                className={menuClass}
+                onClick={closeSidebar}
+              >
+                <FaChartBar className="text-base" />
+                <span>Total Order</span>
+              </NavLink>
               <NavLink
                 to="/dashboard/sliders"
                 className={menuClass}

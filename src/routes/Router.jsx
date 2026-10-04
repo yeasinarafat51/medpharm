@@ -29,6 +29,7 @@ import Cart from "../pages/Cart/Cart";
 import Checkout from "../pages/Checkout/Checkout";
 import Mainbody from "../components/Home/Mainbody";
 import SpecialOfferManagement from "../pages/SpecialOfferManagement";
+import TotalOrders from "../pages/Dashboard/Admin/TotalOrders";
 // import Unauthorized from "./pages/Unauthorized";
 // import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
@@ -168,6 +169,10 @@ const router = createBrowserRouter([
       {
         path: "sales-report",
         element: <SalesReport />,
+      },
+      {
+        path: "total-orders",
+        element: <TotalOrders />,
       },
     ],
   },
