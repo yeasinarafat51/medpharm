@@ -1,812 +1,540 @@
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { useForm } from "react-hook-form";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 
-const API_URL = " https://medpharm-server-3.onrender.com";
+const API = "https://medpharm-server-3.onrender.com";
 
-function UpdateMedicine() {
+const companies = [
+  "Square",
+  "Unimed Unihealth",
+  "Aci",
+  "Opsonin",
+  "Popular",
+  "Ibnsina",
+  "SKF",
+  "Radiant",
+  "Aristopharma",
+];
+
+const categories = [
+  "Tablet",
+  "Capsule",
+  "Syrup",
+  "Drop",
+  "Injection",
+  "Ointment",
+  "Inhaler",
+  "Suspension",
+  "General",
+];
+
+const UpdateMedicine = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ১. আগের সার্চ, কোম্পানি, পেজ ও ফিল্টার তথ্য রিকভার (location.state অথবা sessionStorage থেকে)
+  const returnSearch =
+    location.state?.search ??
+    sessionStorage.getItem("novacare_admin_med_search") ??
+    "";
+  const returnCompany =
+    location.state?.company ??
+    sessionStorage.getItem("novacare_admin_med_company") ??
+    "";
+  const returnSort =
+    location.state?.sort ??
+    sessionStorage.getItem("novacare_admin_med_sort") ??
+    "asc";
+  const returnPage =
+    Number(
+      location.state?.page ??
+        sessionStorage.getItem("novacare_admin_med_page") ??
+        1,
+    ) || 1;
 
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm({
-    defaultValues: {
-      medicineName: "",
-      genericName: "",
-      company: "",
-      category: "",
-      purchasePrice: "",
-      profitPercent: "",
-      mrpePrice: "",
-      bikriPercent: "",
-      stock: "",
-      boxQuantity: "",
-    },
+  const [formData, setFormData] = useState({
+    medicineName: "",
+    genericName: "",
+    company: "",
+    category: "Tablet",
+    strength: "",
+    purchasePrice: 0,
+    mrpePrice: 0,
+    bikriPercent: 0,
+    sellingPrice: 0,
+    stock: 0,
+    boxQuantity: 1,
+    image: "",
+    description: "",
   });
 
-  // ==========================================
-  // WATCH VALUES
-  // ==========================================
-
-  const watchedMrp = watch("mrpePrice");
-  const watchedBikriPercent = watch("bikriPercent");
-
-  // ==========================================
-  // CONVERT TO NUMBER SAFELY
-  // ==========================================
-
-  const mrpePrice = useMemo(() => {
-    const value = parseFloat(watchedMrp);
-    return Number.isFinite(value) ? value : 0;
-  }, [watchedMrp]);
-
-  const bikriPercent = useMemo(() => {
-    const value = parseFloat(watchedBikriPercent);
-    return Number.isFinite(value) ? value : 0;
-  }, [watchedBikriPercent]);
-
-  // ==========================================
-  // SELLING PRICE
-  //
-  // MRP - Discount
-  //
-  // Example:
-  // MRP = 100
-  // Discount = 10%
-  // Selling Price = 90
-  // ==========================================
-
-  const sellingPrice = useMemo(() => {
-    if (mrpePrice <= 0) {
-      return 0;
-    }
-
-    const discountAmount = (mrpePrice * bikriPercent) / 100;
-
-    const finalPrice = mrpePrice - discountAmount;
-
-    return Math.max(0, Number(finalPrice.toFixed(2)));
-  }, [mrpePrice, bikriPercent]);
-
-  // ==========================================
-  // LOAD MEDICINE
-  // ==========================================
-
+  // ২. মেডিসিনের বর্তমান ডাটা ডাটাবেজ থেকে ফেচ করা
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    const loadMedicine = async () => {
+    const fetchMedicine = async () => {
       try {
         setLoading(true);
+        const res = await axios.get(`${API}/api/medicines/${id}`);
+        const med = res.data?.medicine || res.data;
 
-        const res = await axios.get(`${API_URL}/api/medicines/${id}`, {
-          timeout: 20000,
-        });
+        if (isMounted && med) {
+          const purchase = Number(med.purchasePrice || 0);
+          const mrp = Number(med.mrpePrice ?? med.mrp ?? 0);
+          const bikri = Number(med.bikriPercent ?? med.discount ?? 0);
+          const selling =
+            Number(med.sellingPrice) ||
+            (mrp > 0 ? parseFloat((mrp - (mrp * bikri) / 100).toFixed(2)) : 0);
 
-        console.log("Medicine Load Response:", res.data);
-
-        // --------------------------------------
-        // HANDLE DIFFERENT RESPONSE STRUCTURES
-        // --------------------------------------
-
-        const medicine = res.data?.medicine || res.data?.data || res.data;
-
-        if (!medicine || !medicine._id) {
-          throw new Error("Medicine data not found");
+          setFormData({
+            medicineName: med.medicineName || "",
+            genericName: med.genericName || "",
+            company: med.company || "",
+            category: med.category || "Tablet",
+            strength: med.strength || "",
+            purchasePrice: purchase,
+            mrpePrice: mrp,
+            bikriPercent: bikri,
+            sellingPrice: selling,
+            stock: Number(med.stock || 0),
+            boxQuantity: Number(med.boxQuantity || 1),
+            image: med.image || "",
+            description: med.description || "",
+          });
         }
-
-        if (!mounted) return;
-
-        reset({
-          medicineName: medicine.medicineName ?? "",
-          genericName: medicine.genericName ?? "",
-          company: medicine.company ?? "",
-          category: medicine.category ?? "",
-
-          purchasePrice:
-            medicine.purchasePrice !== undefined &&
-            medicine.purchasePrice !== null
-              ? medicine.purchasePrice
-              : "",
-
-          profitPercent:
-            medicine.profitPercent !== undefined &&
-            medicine.profitPercent !== null
-              ? medicine.profitPercent
-              : "",
-
-          mrpePrice:
-            medicine.mrpePrice !== undefined && medicine.mrpePrice !== null
-              ? medicine.mrpePrice
-              : "",
-
-          bikriPercent:
-            medicine.bikriPercent !== undefined &&
-            medicine.bikriPercent !== null
-              ? medicine.bikriPercent
-              : "",
-
-          stock:
-            medicine.stock !== undefined && medicine.stock !== null
-              ? medicine.stock
-              : "",
-
-          boxQuantity:
-            medicine.boxQuantity !== undefined && medicine.boxQuantity !== null
-              ? medicine.boxQuantity
-              : "",
-        });
-
-        console.log("Loaded MRP:", medicine.mrpePrice);
-        console.log("Loaded Discount:", medicine.bikriPercent);
-        console.log("Loaded Selling Price:", medicine.sellingPrice);
-      } catch (error) {
-        console.error("Load Medicine Error:", error);
-
-        if (!mounted) return;
-
+      } catch (err) {
+        console.error("Fetch Medicine Error:", err);
         Swal.fire({
           icon: "error",
-          title: "Failed to Load Medicine",
-          text:
-            error?.response?.data?.message ||
-            error?.message ||
-            "Medicine information could not be loaded.",
+          title: "Error!",
+          text: "ওষুধের ডাটা লোড করা যায়নি!",
         });
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     if (id) {
-      loadMedicine();
-    } else {
-      setLoading(false);
+      fetchMedicine();
     }
 
     return () => {
-      mounted = false;
+      isMounted = false;
     };
-  }, [id, reset]);
+  }, [id]);
 
-  // ==========================================
-  // UPDATE MEDICINE
-  // ==========================================
+  // ৩. ইনপুট হ্যান্ডলার এবং অটোমেটিক সেলিং প্রাইস ক্যালকুলেশন
+  const handleChange = (e) => {
+    const { name, value } = e.target;
 
-  const onSubmit = async (data) => {
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+
+      // MRP বা Bikri % পরিবর্তন হলে Selling Price অটো হিসেব হবে
+      if (name === "mrpePrice" || name === "bikriPercent") {
+        const mrp =
+          parseFloat(name === "mrpePrice" ? value : updated.mrpePrice) || 0;
+        const bikri =
+          parseFloat(name === "bikriPercent" ? value : updated.bikriPercent) ||
+          0;
+        if (mrp > 0) {
+          updated.sellingPrice = parseFloat(
+            (mrp - (mrp * bikri) / 100).toFixed(2),
+          );
+        }
+      }
+
+      return updated;
+    });
+  };
+
+  // ৪. সফল এডিটের পর আগের সার্চ ও পেজে ফিরে যাওয়ার নেভিগেশন হেল্পার
+  const navigateBackWithState = (editedId = id) => {
+    sessionStorage.setItem("novacare_admin_last_edited_id", editedId);
+    sessionStorage.setItem("novacare_admin_med_search", returnSearch);
+    sessionStorage.setItem("novacare_admin_med_company", returnCompany);
+    sessionStorage.setItem("novacare_admin_med_page", String(returnPage));
+    sessionStorage.setItem("novacare_admin_med_sort", returnSort);
+
+    const targetRoute = location.state?.from || "/dashboard/all-medicines";
+
+    navigate(targetRoute, {
+      state: {
+        search: returnSearch,
+        company: returnCompany,
+        page: returnPage,
+        sort: returnSort,
+        lastEditedId: editedId,
+      },
+      replace: true,
+    });
+  };
+
+  // ৫. সাবমিট ও সার্ভার আপডেট
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
     try {
-      setUpdating(true);
+      setIsSubmitting(true);
 
-      // --------------------------------------
-      // CONVERT ALL NUMERIC VALUES
-      // --------------------------------------
-
-      const purchasePrice = parseFloat(data.purchasePrice) || 0;
-
-      const profitPercent = parseFloat(data.profitPercent) || 0;
-
-      const mrp = parseFloat(data.mrpePrice) || 0;
-
-      const discountPercent = parseFloat(data.bikriPercent) || 0;
-
-      const stock = parseInt(data.stock, 10) || 0;
-
-      const boxQuantity = parseInt(data.boxQuantity, 10) || 0;
-
-      // --------------------------------------
-      // CALCULATE SELLING PRICE AGAIN
-      //
-      // Do NOT depend only on React state.
-      // This makes sure backend always receives
-      // the correct calculated value.
-      // --------------------------------------
-
-      const calculatedSellingPrice = mrp - (mrp * discountPercent) / 100;
-
-      const finalSellingPrice = Math.max(
-        0,
-        Number(calculatedSellingPrice.toFixed(2)),
-      );
-
-      // --------------------------------------
-      // FINAL UPDATE DATA
-      // --------------------------------------
-
-      const updateData = {
-        medicineName: data.medicineName?.trim() || "",
-        genericName: data.genericName?.trim() || "",
-        company: data.company?.trim() || "",
-        category: data.category?.trim() || "",
-
-        purchasePrice,
-        profitPercent,
-
-        mrpePrice: mrp,
-        bikriPercent: discountPercent,
-
-        sellingPrice: finalSellingPrice,
-
-        stock,
-        boxQuantity,
+      const payload = {
+        medicineName: formData.medicineName.trim(),
+        genericName: formData.genericName.trim(),
+        company: formData.company.trim(),
+        category: formData.category,
+        strength: formData.strength.trim(),
+        purchasePrice: Number(formData.purchasePrice) || 0,
+        mrpePrice: Number(formData.mrpePrice) || 0,
+        bikriPercent: Number(formData.bikriPercent) || 0,
+        sellingPrice: Number(formData.sellingPrice) || 0,
+        stock: Number(formData.stock) || 0,
+        boxQuantity: Number(formData.boxQuantity) || 1,
+        image: formData.image.trim(),
+        description: formData.description.trim(),
       };
 
-      console.log("=================================");
-      console.log("UPDATE MEDICINE DATA");
-      console.log("=================================");
-      console.log(updateData);
-      console.log("MRP:", mrp);
-      console.log("Discount:", discountPercent);
-      console.log("Selling Price:", finalSellingPrice);
-      console.log("=================================");
+      const res = await axios.put(`${API}/api/medicines/${id}`, payload);
 
-      // --------------------------------------
-      // VALIDATION
-      // --------------------------------------
+      if (res.data?.success || res.status === 200) {
+        // ফ্রন্টএন্ড লোকাল ক্যাশ ক্লিয়ার করা যাতে সাথে সাথে নতুন MRP দেখায়
+        try {
+          Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith("meds_v2_") || key.includes("medicines")) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (e) {
+          console.warn("Storage cache clear error", e);
+        }
 
-      if (!data.medicineName?.trim()) {
-        Swal.fire({
-          icon: "warning",
-          title: "Medicine Name Required",
-          text: "Please enter medicine name.",
+        await Swal.fire({
+          icon: "success",
+          title: "আপডেট সফল হয়েছে! 🎉",
+          text: `"${payload.medicineName}" এর তথ্য ডাটাবেজে সেভ হয়েছে। আগের তালিকায় নিয়ে যাওয়া হচ্ছে...`,
+          timer: 1500,
+          showConfirmButton: false,
         });
 
-        setUpdating(false);
-        return;
-      }
-
-      if (mrp <= 0) {
+        // ঠিক আগের সার্চ ও ওষুধটিতে ফিরে যাওয়া
+        navigateBackWithState(id);
+      } else {
         Swal.fire({
-          icon: "warning",
-          title: "Invalid MRP",
-          text: "MRP price must be greater than 0.",
+          icon: "error",
+          title: "ব্যর্থ হয়েছে!",
+          text: res.data?.message || "সার্ভার এরর, আবার চেষ্টা করুন।",
         });
-
-        setUpdating(false);
-        return;
       }
-
-      if (discountPercent < 0 || discountPercent > 100) {
-        Swal.fire({
-          icon: "warning",
-          title: "Invalid Discount",
-          text: "Discount must be between 0% and 100%.",
-        });
-
-        setUpdating(false);
-        return;
-      }
-
-      // --------------------------------------
-      // API REQUEST
-      // --------------------------------------
-
-      const res = await axios.put(
-        `${API_URL}/api/medicines/${id}`,
-        updateData,
-        {
-          timeout: 20000,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      console.log("Update API Response:", res.data);
-
-      // --------------------------------------
-      // SUCCESS
-      // --------------------------------------
-
-      await Swal.fire({
-        icon: "success",
-        title: "Medicine Updated!",
-        html: `
-          <div style="text-align:left">
-            <p><strong>Medicine:</strong> ${data.medicineName}</p>
-            <p><strong>MRP:</strong> ৳ ${mrp.toFixed(2)}</p>
-            <p><strong>Discount:</strong> ${discountPercent}%</p>
-            <p><strong>Selling Price:</strong> ৳ ${finalSellingPrice.toFixed(2)}</p>
-            <p><strong>Stock:</strong> ${stock}</p>
-          </div>
-        `,
-        confirmButtonText: "OK",
-      });
-
-      navigate("/dashboard/all-medicine");
     } catch (error) {
-      console.error("Update Medicine Error:", error);
-
+      console.error("Update Error:", error);
       Swal.fire({
         icon: "error",
-        title: "Update Failed",
+        title: "Error!",
         text:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Something went wrong while updating medicine.",
+          error?.response?.data?.message || error.message || "আপডেট করা যায়নি!",
       });
     } finally {
-      setUpdating(false);
+      setIsSubmitting(false);
     }
   };
 
-  // ==========================================
-  // LOADING SCREEN
-  // ==========================================
-
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center bg-gray-100">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-
-          <p className="mt-5 text-lg font-bold text-gray-700">
-            Loading Medicine...
-          </p>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Please wait while medicine information is loading.
-          </p>
-        </div>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
+        <div className="h-9 w-9 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
+        <p className="text-xs font-bold text-slate-500">
+          মেডিসিনের ডাটা লোড হচ্ছে...
+        </p>
       </div>
     );
   }
 
-  // ==========================================
-  // MAIN UI
-  // ==========================================
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-50 px-4 py-8">
-      <div className="mx-auto max-w-5xl">
-        {/* =====================================
-            HEADER
-        ===================================== */}
+    <div className="mx-auto max-w-4xl p-4 md:p-8">
+      {/* HEADER & BACK BUTTON */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <button
+            type="button"
+            onClick={() => navigateBackWithState()}
+            className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-700 transition"
+          >
+            <span>← আগের সার্চে ফিরে যান</span>
+            {returnSearch && (
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 font-bold">
+                (সার্চ: &quot;{returnSearch}&quot;)
+              </span>
+            )}
+          </button>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            Update Medicine: {formData.medicineName}
+          </h1>
+          <p className="text-xs text-slate-500">
+            MRP, Bikri %, Selling Price ও স্টক পরিবর্তন করুন।
+          </p>
+        </div>
 
-        <div className="mb-6">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h1 className="text-3xl font-black text-slate-800">
-                Update Medicine
-              </h1>
+        <button
+          type="button"
+          onClick={() => navigateBackWithState()}
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+      </div>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Update medicine information, pricing and stock.
-              </p>
-            </div>
+      {/* FORM CARD */}
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-xs md:p-8"
+      >
+        {/* ROW 1: NAME & GENERIC */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Medicine Name *
+            </label>
+            <input
+              type="text"
+              name="medicineName"
+              required
+              value={formData.medicineName}
+              onChange={handleChange}
+              placeholder="e.g. Napa Extra, Neurolin 50"
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+            />
+          </div>
 
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard/all-medicine")}
-              disabled={updating}
-              className="rounded-xl border border-gray-300 bg-white px-5 py-3 font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
-            >
-              ← All Medicines
-            </button>
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Generic Name
+            </label>
+            <input
+              type="text"
+              name="genericName"
+              value={formData.genericName}
+              onChange={handleChange}
+              placeholder="e.g. Paracetamol + Caffeine"
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 outline-none focus:border-emerald-500"
+            />
           </div>
         </div>
 
-        {/* =====================================
-            FORM CARD
-        ===================================== */}
-
-        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xl">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            {/* =================================
-                BASIC INFORMATION
-            ================================= */}
-
-            <div className="p-5 md:p-8">
-              <div className="mb-6 border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-black text-gray-800">
-                  💊 Medicine Information
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Update the basic medicine details.
-                </p>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                {/* Medicine Name */}
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Medicine Name *
-                  </label>
-
-                  <input
-                    type="text"
-                    placeholder="Enter medicine name"
-                    {...register("medicineName", {
-                      required: "Medicine name is required",
-                    })}
-                    className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:ring-2 ${
-                      errors.medicineName
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
-                    }`}
-                  />
-
-                  {errors.medicineName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.medicineName.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* Generic Name */}
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Generic Name
-                  </label>
-
-                  <input
-                    type="text"
-                    placeholder="Enter generic name"
-                    {...register("genericName")}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-
-                {/* Company */}
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Company
-                  </label>
-
-                  <input
-                    type="text"
-                    placeholder="Enter company name"
-                    {...register("company")}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-
-                {/* Category */}
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Category
-                  </label>
-
-                  <input
-                    type="text"
-                    placeholder="Enter category"
-                    {...register("category")}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* =================================
-                PURCHASE INFORMATION
-            ================================= */}
-
-            <div className="border-t border-gray-200 bg-gray-50/70 p-5 md:p-8">
-              <div className="mb-6 border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-black text-gray-800">
-                  💰 Purchase Information
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Manage purchase price and profit information.
-                </p>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                {/* Purchase Price */}
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Purchase Price
-                  </label>
-
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-500">
-                      ৳
-                    </span>
-
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      {...register("purchasePrice")}
-                      className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-                </div>
-
-                {/* Profit */}
-
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Profit Percent
-                  </label>
-
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0"
-                      {...register("profitPercent")}
-                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 pr-10 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-500">
-                      %
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* =================================
-                SELLING PRICE
-            ================================= */}
-
-            <div className="p-5 md:p-8">
-              <div className="mb-6 border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-black text-gray-800">
-                  🏷️ Selling Price
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Set MRP and discount. Selling price will be calculated
-                  automatically.
-                </p>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-3">
-                {/* MRP */}
-
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                  <label className="mb-2 block text-sm font-bold text-blue-800">
-                    MRP Price *
-                  </label>
-
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-500">
-                      ৳
-                    </span>
-
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      {...register("mrpePrice", {
-                        required: "MRP price is required",
-                        min: {
-                          value: 0,
-                          message: "MRP cannot be negative",
-                        },
-                      })}
-                      className="w-full rounded-xl border border-blue-200 bg-white py-3 pl-10 pr-4 text-lg font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-
-                  {errors.mrpePrice && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.mrpePrice.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* DISCOUNT */}
-
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-                  <label className="mb-2 block text-sm font-bold text-red-700">
-                    Bikri / Discount %
-                  </label>
-
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      placeholder="0"
-                      {...register("bikriPercent", {
-                        min: {
-                          value: 0,
-                          message: "Minimum 0%",
-                        },
-                        max: {
-                          value: 100,
-                          message: "Maximum 100%",
-                        },
-                      })}
-                      className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 pr-10 text-lg font-bold outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                    />
-
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-red-600">
-                      %
-                    </span>
-                  </div>
-
-                  {errors.bikriPercent && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.bikriPercent.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* SELLING PRICE */}
-
-                <div className="rounded-2xl border-2 border-green-300 bg-green-50 p-5">
-                  <label className="mb-2 block text-sm font-bold text-green-700">
-                    Selling Price
-                  </label>
-
-                  <div className="text-3xl font-black text-green-700">
-                    ৳ {sellingPrice.toFixed(2)}
-                  </div>
-
-                  <p className="mt-2 text-xs font-semibold text-green-600">
-                    MRP − {bikriPercent}% discount
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* =================================
-                STOCK
-            ================================= */}
-
-            <div className="border-t border-gray-200 bg-gray-50/70 p-5 md:p-8">
-              <div className="mb-6 border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-black text-gray-800">
-                  📦 Stock Management
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Update available stock and box quantity.
-                </p>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                {/* STOCK */}
-
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                  <label className="mb-2 block text-sm font-bold text-blue-800">
-                    Available Stock *
-                  </label>
-
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Enter stock quantity"
-                    {...register("stock", {
-                      required: "Stock is required",
-                      min: {
-                        value: 0,
-                        message: "Stock cannot be negative",
-                      },
-                    })}
-                    className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-xl font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-
-                  {errors.stock && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.stock.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* BOX */}
-
-                <div className="rounded-2xl border border-purple-200 bg-purple-50 p-5">
-                  <label className="mb-2 block text-sm font-bold text-purple-800">
-                    Box Quantity
-                  </label>
-
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Enter box quantity"
-                    {...register("boxQuantity", {
-                      min: {
-                        value: 0,
-                        message: "Box quantity cannot be negative",
-                      },
-                    })}
-                    className="w-full rounded-xl border border-purple-200 bg-white px-4 py-3 text-xl font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                  />
-
-                  {errors.boxQuantity && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.boxQuantity.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* =================================
-                PRICE SUMMARY
-            ================================= */}
-
-            <div className="mx-5 mb-8 overflow-hidden rounded-2xl bg-slate-900 p-5 text-white md:mx-8">
-              <h3 className="mb-5 text-lg font-black">📊 Price Summary</h3>
-
-              <div className="grid gap-5 sm:grid-cols-3">
-                <div>
-                  <p className="text-sm text-gray-400">MRP</p>
-
-                  <p className="mt-1 text-2xl font-bold">
-                    ৳ {mrpePrice.toFixed(2)}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Discount</p>
-
-                  <p className="mt-1 text-2xl font-bold text-red-400">
-                    {bikriPercent}%
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Final Selling Price</p>
-
-                  <p className="mt-1 text-2xl font-black text-green-400">
-                    ৳ {sellingPrice.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* =================================
-                BUTTONS
-            ================================= */}
-
-            <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 p-5 sm:flex-row md:p-8">
-              <button
-                type="button"
-                onClick={() => navigate("/dashboard/all-medicine")}
-                disabled={updating}
-                className="flex-1 rounded-xl border border-gray-300 bg-white px-6 py-3 font-bold text-gray-700 shadow-sm transition hover:bg-gray-100 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                disabled={updating}
-                className="flex-1 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {updating ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Updating...
-                  </span>
-                ) : (
-                  "✓ Update Medicine"
-                )}
-              </button>
-            </div>
-          </form>
+        {/* ROW 2: COMPANY, CATEGORY, STRENGTH */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Company *
+            </label>
+            <input
+              type="text"
+              name="company"
+              required
+              list="company-list"
+              value={formData.company}
+              onChange={handleChange}
+              placeholder="e.g. Square, SKF, Aci"
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500"
+            />
+            <datalist id="company-list">
+              {companies.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Category
+            </label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500"
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Strength
+            </label>
+            <input
+              type="text"
+              name="strength"
+              value={formData.strength}
+              onChange={handleChange}
+              placeholder="e.g. 500mg, 10ml"
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 outline-none focus:border-emerald-500"
+            />
+          </div>
         </div>
-      </div>
+
+        {/* ROW 3: PRICING SECTION (MRP, BIKRI %, SELLING, PURCHASE) */}
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+          <h3 className="mb-3 text-xs font-black uppercase tracking-wider text-emerald-950">
+            দাম ও ডিসকাউন্ট হিসেব (Auto Calculation)
+          </h3>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-[11px] font-bold text-slate-700">
+                Purchase Price (৳)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="purchasePrice"
+                value={formData.purchasePrice}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-300 bg-white p-2 font-mono text-xs font-bold text-slate-800 outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-black text-slate-900">
+                MRP (৳) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                name="mrpePrice"
+                value={formData.mrpePrice}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-400 bg-white p-2 font-mono text-xs font-black text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-black text-rose-600">
+                Bikri % OFF *
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                name="bikriPercent"
+                value={formData.bikriPercent}
+                onChange={handleChange}
+                placeholder="e.g. 16, 21.5"
+                className="w-full rounded-xl border border-rose-300 bg-white p-2 font-mono text-xs font-black text-rose-700 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-200"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-black text-emerald-700">
+                Selling Price (৳)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="sellingPrice"
+                value={formData.sellingPrice}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-emerald-400 bg-emerald-100/60 p-2 font-mono text-xs font-black text-emerald-900 outline-none focus:border-emerald-600"
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] text-emerald-800">
+            💡 টিপস: MRP বা Bikri % পরিবর্তন করলেই Selling Price স্বয়ংক্রিয়ভাবে
+            আপডেট হয়ে যাবে।
+          </p>
+        </div>
+
+        {/* ROW 4: STOCK & BOX QUANTITY */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Stock Quantity (Pcs)
+            </label>
+            <input
+              type="number"
+              name="stock"
+              value={formData.stock}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-slate-300 p-2.5 font-mono text-xs font-bold text-slate-800 outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-black text-slate-700">
+              Box Quantity (বক্সে যত পিস থাকে)
+            </label>
+            <input
+              type="number"
+              name="boxQuantity"
+              value={formData.boxQuantity}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-slate-300 p-2.5 font-mono text-xs font-bold text-slate-800 outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        {/* ROW 5: IMAGE URL */}
+        <div>
+          <label className="mb-1 block text-xs font-black text-slate-700">
+            Medicine Image URL
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              name="image"
+              value={formData.image}
+              onChange={handleChange}
+              placeholder="https://example.com/medicine.jpg"
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 outline-none focus:border-emerald-500"
+            />
+            {formData.image && (
+              <img
+                src={formData.image}
+                alt="preview"
+                className="h-10 w-10 shrink-0 rounded-xl border border-slate-200 object-cover bg-slate-50 p-0.5"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* SUBMIT BUTTONS */}
+        <div className="flex flex-col-reverse gap-2.5 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => navigateBackWithState()}
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition active:scale-95 disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                <span>Saving to Database...</span>
+              </>
+            ) : (
+              <span>Update Medicine & Return →</span>
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
-}
+};
 
 export default UpdateMedicine;
