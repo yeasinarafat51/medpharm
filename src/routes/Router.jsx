@@ -30,6 +30,8 @@ import Checkout from "../pages/Checkout/Checkout";
 import Mainbody from "../components/Home/Mainbody";
 import SpecialOfferManagement from "../pages/SpecialOfferManagement";
 import TotalOrders from "../pages/Dashboard/Admin/TotalOrders";
+import HeadlineManagement from "../pages/Dashboard/Admin/HeadlineManagement";
+import MrpCalculator from "../pages/Dashboard/Admin/MrpCalculator";
 // import Unauthorized from "./pages/Unauthorized";
 // import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
@@ -173,6 +175,14 @@ const router = createBrowserRouter([
       {
         path: "total-orders",
         element: <TotalOrders />,
+      },
+      {
+        path: "headlines",
+        element: <HeadlineManagement />,
+      },
+      {
+        path: "mrp-calculator",
+        element: <MrpCalculator />,
       },
     ],
   },

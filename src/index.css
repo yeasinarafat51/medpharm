@@ -1,1 +1,38 @@
 @import "tailwindcss";
+/* =========================================================================
+   টেলিভিশন নিউজ টিকার অ্যানিমেশন (TV News Ticker Tape)
+   ========================================================================= */
+@keyframes tvTicker {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-tv-ticker {
+  display: flex;
+  width: max-content;
+  animation: tvTicker 35s linear infinite;
+  will-change: transform;
+}
+
+/* মাউস হোভার করলে অথবা পজ করা থাকলে টিকার থেমে যাবে */
+.animate-tv-ticker:hover,
+.animate-tv-ticker.paused {
+  animation-play-state: paused !important;
+}
+
+/* স্ক্রলিং গতির ক্লাস */
+.ticker-slow {
+  animation-duration: 55s !important; /* ধীরে ধীরে */
+}
+
+.ticker-normal {
+  animation-duration: 35s !important; /* স্বাভাবিক গতি */
+}
+
+.ticker-fast {
+  animation-duration: 20s !important; /* দ্রুত গতি */
+}

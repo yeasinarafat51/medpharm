@@ -17,6 +17,7 @@ import {
   FaFileInvoice,
   FaChartLine,
   FaShieldAlt,
+  FaBullhorn,
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import useAuth from "../../hooks/useAuth";
@@ -288,6 +289,14 @@ function Dashboard() {
                 <FaClipboardList className="text-base" />
                 <span>All Medicines</span>
               </NavLink>
+              <NavLink
+                to="/dashboard/mrp-calculator"
+                className={menuClass}
+                onClick={closeSidebar}
+              >
+                <FaClipboardList className="text-base" />
+                <span> 🧮 MRP ক্যালকুলেটর</span>
+              </NavLink>
 
               <NavLink
                 to="/dashboard/all-orders"
@@ -363,6 +372,14 @@ function Dashboard() {
               >
                 <FaUsers className="text-base" />
                 <span>Manage Users</span>
+              </NavLink>
+              <NavLink
+                to="/dashboard/headlines"
+                className={menuClass}
+                onClick={closeSidebar}
+              >
+                <FaBullhorn className="text-base" />
+                <span>Headline Management</span>
               </NavLink>
             </>
           )}
