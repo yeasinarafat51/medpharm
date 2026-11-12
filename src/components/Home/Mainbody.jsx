@@ -64,7 +64,7 @@ const Mainbody = () => {
       ===================================================== */}
       <div className="mx-auto max-w-7xl px-2.5 pt-2 sm:px-4">
         <HeroSlider />
-        {/* <NewProducts /> */}
+        <NewProducts />
       </div>
 
       {/* =====================================================
