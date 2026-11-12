@@ -1,13 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import {
-  FaChevronLeft,
-  FaChevronRight,
-  FaPlus,
-  FaMinus,
-  FaHeart,
-  FaRegHeart,
-} from "react-icons/fa";
+import { FaPlus, FaMinus, FaHeart, FaRegHeart } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import useCart from "../../hooks/useCart";
@@ -17,7 +10,7 @@ const API_URL = (
   import.meta.env.VITE_API_URL || "https://medpharm-server-3.onrender.com"
 ).trim();
 
-// Fallback in-stock medicines when offline
+// আগের আসল মেডিসিন ও ইমেজসমূহ
 const INITIAL_FALLBACK = [
   {
     _id: "med-new-1",
@@ -99,7 +92,7 @@ export function NewProducts({
   const [isPaused, setIsPaused] = useState(false);
   const [wishlist, setWishlist] = useState({});
 
-  // 1. Fetch from backend API
+  // ১. ব্যাকএন্ড থেকে ফেচ করা
   useEffect(() => {
     if (!propMedicines || propMedicines.length === 0) {
       axios
@@ -119,7 +112,7 @@ export function NewProducts({
     }
   }, [propMedicines]);
 
-  // 2. Synchronize cart state with button quantities (card1 & card2)
+  // ২. কার্ট স্টেট সিঙ্ক্রোনাইজেশন
   useEffect(() => {
     if (Array.isArray(cart) && cart.length > 0) {
       const qMap = {};
@@ -134,7 +127,7 @@ export function NewProducts({
     }
   }, [cart]);
 
-  // 3. Instant auto-sync when a new medicine is added
+  // ৩. নতুন ওষুধ যুক্ত হলে সাথে সাথে স্লাইডারের শীর্ষে দেখানো
   useEffect(() => {
     const handleCustomMedicineAdd = (event) => {
       const newMed = event.detail;
@@ -165,7 +158,7 @@ export function NewProducts({
         ? internalMedicines
         : INITIAL_FALLBACK;
 
-  // 4. Filter out stock out products (stock <= 0) and sort with newest on top
+  // ৪. ইন-স্টক ওষুধ ফিল্টার করা
   const newProducts = useMemo(() => {
     const inStockList = sourceList.filter((med) => {
       const stock = Number(med.stock);
@@ -185,15 +178,7 @@ export function NewProducts({
     return list.slice(0, 16);
   }, [sourceList]);
 
-  // Scroll to index 0 on new item
-  const firstItemId = newProducts[0]?._id;
-  useEffect(() => {
-    if (sliderRef.current) {
-      sliderRef.current.scrollTo({ left: 0, behavior: "smooth" });
-    }
-  }, [firstItemId]);
-
-  // Auto-play horizontal scroll (pauses on hover and touch)
+  // অটো-স্ক্রোল (হভার করলে থামবে)
   useEffect(() => {
     if (isPaused || newProducts.length <= 3) return;
 
@@ -203,25 +188,13 @@ export function NewProducts({
         if (scrollLeft + clientWidth >= scrollWidth - 10) {
           sliderRef.current.scrollTo({ left: 0, behavior: "smooth" });
         } else {
-          sliderRef.current.scrollBy({ left: 260, behavior: "smooth" });
+          sliderRef.current.scrollBy({ left: 240, behavior: "smooth" });
         }
       }
-    }, 4000);
+    }, 4500);
 
     return () => clearInterval(interval);
   }, [isPaused, newProducts.length]);
-
-  const handleScrollLeft = () => {
-    if (sliderRef.current) {
-      sliderRef.current.scrollBy({ left: -280, behavior: "smooth" });
-    }
-  };
-
-  const handleScrollRight = () => {
-    if (sliderRef.current) {
-      sliderRef.current.scrollBy({ left: 280, behavior: "smooth" });
-    }
-  };
 
   const toggleWishlist = (id, e) => {
     e.stopPropagation();
@@ -233,7 +206,7 @@ export function NewProducts({
   };
 
   // =====================================================
-  // ⚡ ACTION LOGIC (card1 vs card2)
+  // অ্যাকশন হ্যান্ডলার (কার্ট ও কোয়ান্টিটি)
   // =====================================================
   const handleAddToCart = (medicine, e) => {
     e.stopPropagation();
@@ -341,54 +314,27 @@ export function NewProducts({
   if (newProducts.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-3xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-emerald-50/70 p-4 sm:p-5 shadow-sm">
-      {/* 1. Header Section */}
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-[#00897b] to-emerald-600 text-white shadow-md shadow-teal-700/20">
-            <span className="text-base">✨</span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900">
-                New Arrivals (Fresh Batches)
-              </h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#00897b] px-2 py-0.5 text-[10px] font-black uppercase text-white shadow-2xs">
-                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-                <span>1-Row Live Carousel</span>
-              </span>
-              <span className="rounded-md bg-emerald-100/90 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                {newProducts.length} Items
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium">
-              Real-time automated sync with recently added medicines
-            </p>
-          </div>
-        </div>
-
-        {/* Right Navigation: Scroll arrows only (Add Medicine button removed) */}
-        <div className="flex items-center gap-1.5 self-end sm:self-auto">
-          <button
-            type="button"
-            onClick={handleScrollLeft}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition shadow-2xs cursor-pointer active:scale-95"
-            title="Previous"
-          >
-            <FaChevronLeft size={11} />
-          </button>
-          <button
-            type="button"
-            onClick={handleScrollRight}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition shadow-2xs cursor-pointer active:scale-95"
-            title="Next"
-          >
-            <FaChevronRight size={11} />
-          </button>
-        </div>
+    /* ⚡ uporer theke aktu nice hobe (mt-6 mb-8) */
+    <div className="mt-6 mb-8 bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm">
+      {/* ========================================================
+          ১. পরিচ্ছন্ন হেডার (Clean Title + See more)
+      ======================================================== */}
+      <div className="mb-4 flex items-center justify-between px-1">
+        <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-800">
+          New Arrivals
+        </h2>
+        <button
+          type="button"
+          onClick={() => navigate("/all-medicines")}
+          className="text-xs sm:text-sm font-bold text-slate-400 hover:text-[#00897b] transition cursor-pointer"
+        >
+          See more
+        </button>
       </div>
 
-      {/* 2. Strict 1-Row Horizontal Slider Track (Ultra-Smooth for Mobile) */}
+      {/* ========================================================
+          ২. ১-রো স্মুথ স্লাইডার ট্র্যাক
+      ======================================================== */}
       <div
         ref={sliderRef}
         onMouseEnter={() => setIsPaused(true)}
@@ -419,12 +365,35 @@ export function NewProducts({
             <div
               key={med._id || `slider-${idx}`}
               onClick={() => onProductClick?.(med)}
-              className="group relative w-48 sm:w-60 md:w-64 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-teal-300 flex flex-col justify-between cursor-pointer active:scale-[0.99]"
+              className="group relative w-48 sm:w-60 md:w-64 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-teal-300 flex flex-col justify-between cursor-pointer active:scale-[0.99]"
               style={{ scrollSnapAlign: "start" }}
             >
               <div>
-                {/* Product Image & Badges (Matches AllItemMedicine exactly with medisin fallback) */}
-                <div className="relative overflow-hidden bg-slate-50 flex items-center justify-center">
+                {/* 🌟 আগের ডিসকাউন্ট ব্যাজ ও উইশলিস্ট */}
+                <div className="flex items-center justify-between mb-1.5">
+                  {discountPercent > 0 ? (
+                    <span className="rounded-full bg-[#22c55e] px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
+                      {discountPercent}% OFF
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => toggleWishlist(med._id, e)}
+                    className="rounded-full bg-slate-50 p-1.5 text-slate-400 hover:text-red-500 shadow-2xs transition cursor-pointer"
+                    title="Wishlist"
+                  >
+                    {isWish ? (
+                      <FaHeart className="text-red-500 text-xs" />
+                    ) : (
+                      <FaRegHeart className="text-slate-400 text-xs" />
+                    )}
+                  </button>
+                </div>
+
+                {/* 🌟 আগের বড় ও স্পষ্ট ইমেজ সাইজ */}
+                <div className="relative overflow-hidden bg-slate-50 rounded-xl flex items-center justify-center my-1.5">
                   <img
                     src={med.image || medisin}
                     alt={med.medicineName || "Medicine"}
@@ -433,41 +402,10 @@ export function NewProducts({
                       e.target.src = medisin;
                     }}
                   />
-
-                  {/* Top-left: Company & NEW Badge */}
-                  <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
-                    <span className="rounded-full bg-[#00897b] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs uppercase tracking-wider truncate max-w-[110px]">
-                      {med.company || "Medicine"}
-                    </span>
-                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-black uppercase text-white shadow-xs">
-                      ✨ NEW
-                    </span>
-                  </div>
-
-                  {/* Top-right: Discount & Wishlist */}
-                  <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
-                    {discountPercent > 0 && (
-                      <span className="rounded-full bg-[#22c55e] px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
-                        {discountPercent}% OFF
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => toggleWishlist(med._id, e)}
-                      className="rounded-full bg-white/90 p-1.5 text-slate-400 hover:text-red-500 shadow-2xs backdrop-blur-xs transition cursor-pointer"
-                      title="Wishlist"
-                    >
-                      {isWish ? (
-                        <FaHeart className="text-red-500 text-xs" />
-                      ) : (
-                        <FaRegHeart className="text-slate-400 text-xs" />
-                      )}
-                    </button>
-                  </div>
                 </div>
 
-                {/* Content Section (No Stock, No Box) */}
-                <div className="p-3 sm:p-3.5 pb-2">
+                {/* প্রোডাক্ট তথ্য */}
+                <div className="pt-2">
                   <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mb-1">
                     <span className="truncate max-w-[130px] sm:max-w-[150px]">
                       {med.genericName || "Certified Formulation"}
@@ -482,74 +420,61 @@ export function NewProducts({
                   <h3 className="line-clamp-1 text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#00897b] transition">
                     {med.medicineName || "Unknown Medicine"}
                   </h3>
-
-                  {/* Price Box */}
-                  <div className="mt-2 rounded-xl bg-slate-50 p-2 sm:p-2.5 border border-slate-100">
-                    {hasDiscount ? (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
-                          MRP
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] text-slate-400 line-through">
-                          ৳ {mrpPrice.toFixed(2)}
-                        </span>
-                      </div>
-                    ) : null}
-                    <div
-                      className={`flex items-center justify-between ${
-                        hasDiscount
-                          ? "mt-1 border-t border-slate-200/60 pt-1"
-                          : ""
-                      }`}
-                    >
-                      <span className="text-[11px] sm:text-xs font-bold text-slate-700">
-                        Price
-                      </span>
-                      <span className="text-sm sm:text-base font-black text-[#00897b]">
-                        ৳ {sellingPrice.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                    {med.company || "Medicine Store"}
+                  </p>
                 </div>
               </div>
 
-              {/* Action: Add to Cart or Stepper */}
-              <div className="p-3 sm:p-3.5 pt-1 w-full">
-                {currentQty === 0 ? (
-                  <button
-                    type="button"
-                    onClick={(e) => handleAddToCart(med, e)}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#00897b] py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#00796b] active:scale-95 cursor-pointer"
-                  >
-                    <FaPlus className="text-[10px]" />
-                    <span>Add to Cart</span>
-                  </button>
-                ) : (
-                  <div className="flex h-8 w-full items-center justify-between rounded-xl border border-slate-300 bg-white overflow-hidden shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={(e) => handleDecrease(med, e)}
-                      className="flex h-full w-8 items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-90 transition font-bold cursor-pointer"
-                      title="Decrease"
-                    >
-                      <FaMinus className="text-[9px]" />
-                    </button>
-
-                    <span className="flex-1 text-center font-sans text-xs font-black text-slate-800">
-                      {currentQty}
+              {/* 🌟 আগের মূল্য ও #00897b বাটন কালার */}
+              <div className="mt-3 flex items-end justify-between pt-2 border-t border-slate-100">
+                <div className="min-w-0 pr-1">
+                  {hasDiscount && (
+                    <span className="block text-[10px] sm:text-[11px] text-slate-400 line-through">
+                      ৳ {mrpPrice.toFixed(2)}
                     </span>
+                  )}
+                  <span className="text-sm sm:text-base font-black text-[#00897b] truncate block">
+                    ৳ {sellingPrice.toFixed(2)}
+                  </span>
+                </div>
 
+                {/* 🌟 আগের টিল কালার (#00897b) বাটন ও কাউন্টার */}
+                <div className="shrink-0">
+                  {currentQty === 0 ? (
                     <button
                       type="button"
-                      onClick={(e) => handleIncrease(med, e)}
-                      disabled={stock > 0 && currentQty >= stock}
-                      className="flex h-full w-8 items-center justify-center bg-[#00897b] text-white hover:bg-[#00796b] active:scale-90 transition disabled:opacity-50 cursor-pointer"
-                      title="Increase"
+                      onClick={(e) => handleAddToCart(med, e)}
+                      className="rounded-xl bg-[#00897b] hover:bg-[#00796b] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1"
                     >
                       <FaPlus className="text-[9px]" />
+                      <span>Add to Cart</span>
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex h-8 items-center rounded-xl border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDecrease(med, e)}
+                        className="flex h-full w-7 items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-90 transition font-bold cursor-pointer"
+                        title="Decrease"
+                      >
+                        <FaMinus className="text-[9px]" />
+                      </button>
+                      <span className="px-2 text-center text-xs font-black text-slate-800">
+                        {currentQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleIncrease(med, e)}
+                        disabled={stock > 0 && currentQty >= stock}
+                        className="flex h-full w-7 items-center justify-center bg-[#00897b] text-white hover:bg-[#00796b] active:scale-90 transition disabled:opacity-50 cursor-pointer"
+                        title="Increase"
+                      >
+                        <FaPlus className="text-[9px]" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
