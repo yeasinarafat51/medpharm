@@ -179,7 +179,7 @@ function AddMedicine({ onMedicineAdded }) {
         if (result.isConfirmed) {
           navigate("/new-products");
         } else if (result.dismiss === Swal.DismissReason.cancel) {
-          navigate("/all-medicines");
+          navigate("/dashboard/all-medicine");
         }
       });
 
@@ -256,7 +256,7 @@ function AddMedicine({ onMedicineAdded }) {
 
             <button
               type="button"
-              onClick={() => navigate("/all-medicines")}
+              onClick={() => navigate("/dashboard/all-medicine")}
               className="flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold px-4 py-2.5 text-xs transition active:scale-95 cursor-pointer"
             >
               <FaCapsules className="text-emerald-300" />

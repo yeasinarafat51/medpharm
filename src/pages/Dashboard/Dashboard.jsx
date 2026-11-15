@@ -409,6 +409,14 @@ function Dashboard() {
                 <FaImages className="text-base" />
                 <span>Slider Management</span>
               </NavLink>
+              <NavLink
+                to="/dashboard/summary"
+                className={menuClass}
+                onClick={closeSidebar}
+              >
+                <FaImages className="text-base" />
+                <span>CompanySummary</span>
+              </NavLink>
 
               <NavLink
                 to="/dashboard/users"

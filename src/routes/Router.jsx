@@ -36,6 +36,7 @@ import OrderList from "../pages/Dashboard/Admin/OrderList";
 import NewProducts from "../components/Headline/NewProducts";
 import StockOut from "../pages/Dashboard/Admin/StockOut";
 import Stock from "../pages/Dashboard/Admin/Stock";
+import CompanySummary from "../pages/Dashboard/Admin/CompanySummary";
 // import Unauthorized from "./pages/Unauthorized";
 // import Unauthorized from "./pages/Unauthorized";
 const router = createBrowserRouter([
@@ -199,6 +200,10 @@ const router = createBrowserRouter([
       {
         path: "headlines",
         element: <HeadlineManagement />,
+      },
+      {
+        path: "summary",
+        element: <CompanySummary />,
       },
       {
         path: "mrp-calculator",

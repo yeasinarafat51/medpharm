@@ -325,7 +325,7 @@ export function NewProducts({
         </h2>
         <button
           type="button"
-          onClick={() => navigate("/all-medicines")}
+          onClick={() => navigate("/new-products")}
           className="text-xs sm:text-sm font-bold text-slate-400 hover:text-[#00897b] transition cursor-pointer"
         >
           See more
