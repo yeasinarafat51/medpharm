@@ -188,7 +188,7 @@ export function NewProducts({
         if (scrollLeft + clientWidth >= scrollWidth - 10) {
           sliderRef.current.scrollTo({ left: 0, behavior: "smooth" });
         } else {
-          sliderRef.current.scrollBy({ left: 240, behavior: "smooth" });
+          sliderRef.current.scrollBy({ left: 200, behavior: "smooth" });
         }
       }
     }, 4500);
@@ -314,26 +314,25 @@ export function NewProducts({
   if (newProducts.length === 0) return null;
 
   return (
-    /* ⚡ uporer theke aktu nice hobe (mt-6 mb-8) */
-    <div className="mt-6 mb-8 bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm">
+    <section className="mt-6 mb-7">
       {/* ========================================================
-          ১. পরিচ্ছন্ন হেডার (Clean Title + See more)
+          ১. হেডার (সরাসরি পেজ ব্যাকগ্রাউন্ডের সাথে মেশানো)
       ======================================================== */}
-      <div className="mb-4 flex items-center justify-between px-1">
-        <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-800">
+      <div className="mb-2.5 flex items-center justify-between px-0.5">
+        <h2 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-800">
           New Arrivals
         </h2>
         <button
           type="button"
           onClick={() => navigate("/new-products")}
-          className="text-xs sm:text-sm font-bold text-slate-400 hover:text-[#00897b] transition cursor-pointer"
+          className="text-xs font-semibold text-slate-400 hover:text-[#00897b] transition cursor-pointer"
         >
           See more
         </button>
       </div>
 
       {/* ========================================================
-          ২. ১-রো স্মুথ স্লাইডার ট্র্যাক
+          ২. ফ্ল্যাট ও স্মুথ ১-রো স্লাইডার ট্র্যাক
       ======================================================== */}
       <div
         ref={sliderRef}
@@ -341,7 +340,7 @@ export function NewProducts({
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
-        className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 pt-1 scroll-smooth select-none [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-2.5 sm:gap-3 overflow-x-auto pb-1 scroll-smooth select-none [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{
           scrollSnapType: "x mandatory",
           scrollBehavior: "smooth",
@@ -365,14 +364,14 @@ export function NewProducts({
             <div
               key={med._id || `slider-${idx}`}
               onClick={() => onProductClick?.(med)}
-              className="group relative w-48 sm:w-60 md:w-64 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-teal-300 flex flex-col justify-between cursor-pointer active:scale-[0.99]"
+              className="group relative w-[156px] sm:w-[178px] md:w-[192px] shrink-0 overflow-hidden rounded-xl border border-slate-200/60 bg-white p-2.5 transition-colors duration-200 hover:border-[#00897b]/45 flex flex-col justify-between cursor-pointer"
               style={{ scrollSnapAlign: "start" }}
             >
               <div>
-                {/* 🌟 আগের ডিসকাউন্ট ব্যাজ ও উইশলিস্ট */}
-                <div className="flex items-center justify-between mb-1.5">
+                {/* ডিসকাউন্ট ব্যাজ ও উইশলিস্ট */}
+                <div className="flex items-center justify-between mb-1">
                   {discountPercent > 0 ? (
-                    <span className="rounded-full bg-[#22c55e] px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
+                    <span className="rounded-md bg-[#22c55e] px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white">
                       {discountPercent}% OFF
                     </span>
                   ) : (
@@ -381,96 +380,94 @@ export function NewProducts({
                   <button
                     type="button"
                     onClick={(e) => toggleWishlist(med._id, e)}
-                    className="rounded-full bg-slate-50 p-1.5 text-slate-400 hover:text-red-500 shadow-2xs transition cursor-pointer"
+                    className="p-1 text-slate-400 hover:text-red-500 transition cursor-pointer"
                     title="Wishlist"
                   >
                     {isWish ? (
-                      <FaHeart className="text-red-500 text-xs" />
+                      <FaHeart className="text-red-500 text-[11px]" />
                     ) : (
-                      <FaRegHeart className="text-slate-400 text-xs" />
+                      <FaRegHeart className="text-slate-400 text-[11px]" />
                     )}
                   </button>
                 </div>
 
-                {/* 🌟 আগের বড় ও স্পষ্ট ইমেজ সাইজ */}
-                <div className="relative overflow-hidden bg-slate-50 rounded-xl flex items-center justify-center my-1.5">
+                {/* পরিচ্ছন্ন ও ফ্ল্যাট ইমেজ */}
+                <div className="relative overflow-hidden bg-slate-50/40 rounded-lg flex items-center justify-center my-1">
                   <img
                     src={med.image || medisin}
                     alt={med.medicineName || "Medicine"}
-                    className="h-36 sm:h-44 md:h-48 w-full object-contain p-2 sm:p-3 transition duration-500 group-hover:scale-105"
+                    className="h-24 sm:h-28 md:h-32 w-full object-contain p-1.5 sm:p-2 transition duration-300 group-hover:scale-105"
                     onError={(e) => {
                       e.target.src = medisin;
                     }}
                   />
                 </div>
 
-                {/* প্রোডাক্ট তথ্য */}
-                <div className="pt-2">
-                  <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mb-1">
-                    <span className="truncate max-w-[130px] sm:max-w-[150px]">
+                {/* কমপ্যাক্ট প্রোডাক্ট তথ্য */}
+                <div className="pt-1">
+                  <h3 className="line-clamp-1 text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-[#00897b] transition leading-snug">
+                    {med.medicineName || "Unknown Medicine"}
+                  </h3>
+                  <p className="mt-0.5 truncate text-[10px] sm:text-[11px] font-medium text-slate-400">
+                    {med.company || "Medicine Store"}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between gap-1 text-[9.5px] text-slate-400">
+                    <span className="truncate">
                       {med.genericName || "Certified Formulation"}
                     </span>
                     {med.dosageForm && (
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] sm:text-[9px] font-semibold text-slate-600 shrink-0">
-                        {med.dosageForm} {med.strength || ""}
+                      <span className="rounded bg-slate-100 px-1 py-0.5 text-[8.5px] font-semibold text-slate-500 shrink-0">
+                        {med.dosageForm}
                       </span>
                     )}
                   </div>
-
-                  <h3 className="line-clamp-1 text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#00897b] transition">
-                    {med.medicineName || "Unknown Medicine"}
-                  </h3>
-                  <p className="mt-0.5 truncate text-[11px] text-slate-400">
-                    {med.company || "Medicine Store"}
-                  </p>
                 </div>
               </div>
 
-              {/* 🌟 আগের মূল্য ও #00897b বাটন কালার */}
-              <div className="mt-3 flex items-end justify-between pt-2 border-t border-slate-100">
-                <div className="min-w-0 pr-1">
+              {/* মূল্য ও #00897b বাটন */}
+              <div className="mt-2 flex items-end justify-between pt-1.5 border-t border-slate-100 gap-1">
+                <div className="min-w-0">
                   {hasDiscount && (
-                    <span className="block text-[10px] sm:text-[11px] text-slate-400 line-through">
+                    <span className="block text-[9.5px] sm:text-[10px] text-slate-400 line-through leading-none mb-0.5 tabular-nums">
                       ৳ {mrpPrice.toFixed(2)}
                     </span>
                   )}
-                  <span className="text-sm sm:text-base font-black text-[#00897b] truncate block">
+                  <span className="text-xs sm:text-sm font-black text-[#00897b] truncate block leading-tight tabular-nums">
                     ৳ {sellingPrice.toFixed(2)}
                   </span>
                 </div>
 
-                {/* 🌟 আগের টিল কালার (#00897b) বাটন ও কাউন্টার */}
                 <div className="shrink-0">
                   {currentQty === 0 ? (
                     <button
                       type="button"
                       onClick={(e) => handleAddToCart(med, e)}
-                      className="rounded-xl bg-[#00897b] hover:bg-[#00796b] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1"
+                      className="rounded-lg bg-[#00897b] hover:bg-[#00796b] px-2.5 py-1.5 text-[10px] sm:text-[11px] font-bold text-white transition active:scale-95 cursor-pointer flex items-center gap-1"
                     >
-                      <FaPlus className="text-[9px]" />
-                      <span>Add to Cart</span>
+                      <FaPlus className="text-[8px]" />
+                      <span>Add</span>
                     </button>
                   ) : (
-                    <div className="flex h-8 items-center rounded-xl border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                    <div className="flex h-7 items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
                       <button
                         type="button"
                         onClick={(e) => handleDecrease(med, e)}
-                        className="flex h-full w-7 items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-90 transition font-bold cursor-pointer"
+                        className="flex h-full w-6 items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-90 transition font-bold cursor-pointer"
                         title="Decrease"
                       >
-                        <FaMinus className="text-[9px]" />
+                        <FaMinus className="text-[8px]" />
                       </button>
-                      <span className="px-2 text-center text-xs font-black text-slate-800">
+                      <span className="px-1.5 text-center text-[11px] font-black text-slate-800 tabular-nums">
                         {currentQty}
                       </span>
                       <button
                         type="button"
                         onClick={(e) => handleIncrease(med, e)}
                         disabled={stock > 0 && currentQty >= stock}
-                        className="flex h-full w-7 items-center justify-center bg-[#00897b] text-white hover:bg-[#00796b] active:scale-90 transition disabled:opacity-50 cursor-pointer"
+                        className="flex h-full w-6 items-center justify-center bg-[#00897b] text-white hover:bg-[#00796b] active:scale-90 transition disabled:opacity-50 cursor-pointer"
                         title="Increase"
                       >
-                        <FaPlus className="text-[9px]" />
+                        <FaPlus className="text-[8px]" />
                       </button>
                     </div>
                   )}
@@ -480,7 +477,7 @@ export function NewProducts({
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
